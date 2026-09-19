@@ -11,12 +11,11 @@ from app.models import InvestigationState
 from app.trace import Trace
 
 
-def run_investigation(patient_id: str, procedure: str, tooth_number: int | None) -> InvestigationState:
+def start_run(patient_id: str, procedure: str, tooth_number: int | None):
+    """Validate context and create the run row. Returns (run_id, ctx) or (None, error)."""
     parsed = context_interpreter.interpret(patient_id, procedure, tooth_number)
     if not parsed["ok"]:
-        return InvestigationState(run_id="", patient_id=patient_id or "", procedure=procedure or "",
-                                  tooth_number=tooth_number, status="error", error=parsed["error"])
-
+        return None, parsed["error"]
     ctx = parsed["context"]
     with get_conn() as c:
         row = c.execute(
@@ -25,7 +24,11 @@ def run_investigation(patient_id: str, procedure: str, tooth_number: int | None)
             (ctx["patient_id"], ctx["procedure"], ctx["tooth_number"]),
         ).fetchone()
         c.commit()
-    run_id = str(row["id"])
+    return str(row["id"]), ctx
+
+
+def execute_run(run_id: str, ctx: dict) -> InvestigationState:
+    """Run the agent pipeline for an already-created run (sync; callable in background)."""
     trace = Trace(run_id)
     trace.add("context_interpreter", "context", f"Procedure: {ctx['procedure']}"
               + (f", tooth #{ctx['tooth_number']}" if ctx["tooth_number"] is not None else ""))
@@ -50,3 +53,12 @@ def run_investigation(patient_id: str, procedure: str, tooth_number: int | None)
         )
         c.commit()
     return state
+
+
+def run_investigation(patient_id: str, procedure: str, tooth_number: int | None) -> InvestigationState:
+    """Synchronous convenience wrapper (scripts/tests)."""
+    run_id, ctx_or_err = start_run(patient_id, procedure, tooth_number)
+    if run_id is None:
+        return InvestigationState(run_id="", patient_id=patient_id or "", procedure=procedure or "",
+                                  tooth_number=tooth_number, status="error", error=ctx_or_err)
+    return execute_run(run_id, ctx_or_err)

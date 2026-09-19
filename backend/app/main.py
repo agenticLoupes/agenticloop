@@ -1,13 +1,13 @@
 """DentAssist Guardian API (§16). Model keys live server-side only (§14)."""
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.db import get_conn
-from app.graph import run_investigation
+from app.graph import execute_run, start_run
 from app.tools.records import TYPE_CONFIG, get_record
 
 app = FastAPI(title="DentAssist Guardian", description="SYNTHETIC DATA — PROTOTYPE")
@@ -44,11 +44,16 @@ def patient(patient_id: str):
 
 
 @app.post("/investigations")
-def create_investigation(req: InvestigationRequest):
-    state = run_investigation(req.patient_id, req.procedure, req.tooth_number)
-    if state.status == "error" and not state.run_id:
-        raise HTTPException(400, state.error)
-    return state.model_dump(mode="json")
+def create_investigation(req: InvestigationRequest, background: BackgroundTasks):
+    """Returns run_id immediately; the agent runs in the background (§15 polling model).
+
+    The UI polls GET /investigations/{run_id} (status/result) and /trace (live steps).
+    """
+    run_id, ctx_or_err = start_run(req.patient_id, req.procedure, req.tooth_number)
+    if run_id is None:
+        raise HTTPException(400, ctx_or_err)
+    background.add_task(execute_run, run_id, ctx_or_err)
+    return {"run_id": run_id, "status": "running"}
 
 
 @app.get("/investigations/{run_id}")

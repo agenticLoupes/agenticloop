@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import {
+  getRun,
   getTrace,
   resetDemo,
   startInvestigation,
@@ -26,6 +27,7 @@ export default function Home() {
   } | null>(null);
   const [result, setResult] = useState<InvestigationState | null>(null);
   const [trace, setTrace] = useState<TraceEvent[] | null>(null);
+  const [runComplete, setRunComplete] = useState(false);
   const [evidenceId, setEvidenceId] = useState<string | null>(null);
 
   const investigate = useCallback(
@@ -33,16 +35,27 @@ export default function Home() {
       setStep("investigating");
       setTrace(null);
       setResult(null);
+      setRunComplete(false);
       try {
-        const res = await startInvestigation({
+        // POST returns run_id immediately; poll the live trace while the agent works
+        const { run_id } = await startInvestigation({
           patient_id: patientId,
           procedure,
           tooth_number: toothNumber,
         });
-        if (res.status === "error") throw new Error(res.error ?? "run failed");
-        setResult(res);
-        // fetch trace after completion, then animate it line-by-line
-        setTrace(await getTrace(res.run_id));
+        for (;;) {
+          await new Promise((r) => setTimeout(r, 1500));
+          const [tr, run] = await Promise.all([getTrace(run_id), getRun(run_id)]);
+          setTrace(tr);
+          if (run.status === "complete" && run.result) {
+            setResult(run.result);
+            setRunComplete(true);
+            return;
+          }
+          if (run.status === "error") {
+            throw new Error(run.result?.error ?? "run failed");
+          }
+        }
       } catch {
         setStep("error");
       }
@@ -92,7 +105,11 @@ export default function Home() {
         )}
 
         {step === "investigating" && (
-          <TraceView trace={trace} onDone={() => setStep("results")} />
+          <TraceView
+            trace={trace}
+            complete={runComplete}
+            onDone={() => setStep("results")}
+          />
         )}
 
         {step === "results" && result && (

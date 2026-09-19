@@ -52,16 +52,31 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const getPatients = () => request<Patient[]>("/demo/patients");
 
+// POST returns immediately; the agent runs server-side while the UI polls trace + status.
+export interface RunStart {
+  run_id: string;
+  status: string;
+}
+
+export interface RunRow {
+  id: string;
+  status: "running" | "complete" | "error";
+  result: InvestigationState | null;
+}
+
 export const startInvestigation = (body: {
   patient_id: string;
   procedure: string;
   tooth_number: number | null;
 }) =>
-  request<InvestigationState>("/investigations", {
+  request<RunStart>("/investigations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
+export const getRun = (runId: string) =>
+  request<RunRow>(`/investigations/${runId}`);
 
 export const getTrace = (runId: string) =>
   request<TraceEvent[]>(`/investigations/${runId}/trace`);

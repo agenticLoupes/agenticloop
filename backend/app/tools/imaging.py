@@ -57,7 +57,11 @@ def read_imaging(record_id: str, procedure: str, tooth_number: Optional[int] = N
     ])
     try:
         out = get_llm().invoke([msg])
-        text = out.content if isinstance(out.content, str) else str(out.content)
+        content = out.content
+        if isinstance(content, list):  # Gemini returns a list of content parts
+            text = "\n".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in content)
+        else:
+            text = str(content)
     except Exception as e:  # provider failure -> uncertain, never invented (§22)
         return {"error": f"vision unavailable: {e}", "uncertain": True, "evidence_id": record_id}
 

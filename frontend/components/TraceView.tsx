@@ -12,9 +12,11 @@ const AGENT_LABELS: Record<string, string> = {
 
 export default function TraceView({
   trace,
+  complete,
   onDone,
 }: {
-  trace: TraceEvent[] | null; // null while the investigation is still running
+  trace: TraceEvent[] | null; // grows live while the investigation runs (polled)
+  complete: boolean; // true once the run has finished server-side
   onDone: () => void;
 }) {
   const [shown, setShown] = useState(0);
@@ -25,12 +27,16 @@ export default function TraceView({
   useEffect(() => {
     if (!trace) return;
     if (shown >= trace.length) {
-      const t = setTimeout(() => doneRef.current(), 700);
-      return () => clearTimeout(t);
+      // caught up: if the run is over, reveal results; otherwise wait for more lines
+      if (complete) {
+        const t = setTimeout(() => doneRef.current(), 700);
+        return () => clearTimeout(t);
+      }
+      return;
     }
     const t = setTimeout(() => setShown((s) => s + 1), 350);
     return () => clearTimeout(t);
-  }, [trace, shown]);
+  }, [trace, shown, complete]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -49,7 +55,7 @@ export default function TraceView({
           </p>
         )}
         {trace?.slice(0, shown).map((ev, i) => {
-          const active = i === shown - 1 && shown < trace.length;
+          const active = i === shown - 1 && (shown < trace.length || !complete);
           return (
             <div key={ev.sequence_no} className="trace-in">
               <span className="block text-[10px] uppercase tracking-[0.2em] text-teal-500">
@@ -61,6 +67,9 @@ export default function TraceView({
             </div>
           );
         })}
+        {trace && shown >= trace.length && !complete && (
+          <p className="animate-pulse text-stone-500">→ …</p>
+        )}
         <div ref={endRef} />
       </div>
     </section>

@@ -24,6 +24,10 @@ Always check prior clinical notes and visit transcripts with a broad query (e.g.
 before concluding nothing is relevant — easy-to-miss context often lives there. A record whose
 current status cannot be established from the sources is still a candidate (say so in its
 summary); uncertainty is for the verifier to decide, not a reason to omit.
+If an imaging record covers the procedure site, inspect it with read_imaging to confirm its
+region and relevance. When read_imaging reports the image is relevant to the procedure site,
+INCLUDE that imaging record as a candidate (title it as an imaging record to review, evidence id
+IMG-…) — the dentist reviews the image itself; you never interpret it.
 Commonly relevant sources for this procedure (a hint, not an order): {hints}.
 
 STRICT RULES:
@@ -44,7 +48,8 @@ def investigate(context: dict, trace: Trace, max_steps: int = 12) -> list[Candid
     patient_id = context["patient_id"]
     procedure = context["procedure"]
     tooth = context.get("tooth_number")
-    tools = build_tools(patient_id, procedure, tooth, trace)
+    imaging_findings: list[dict] = []
+    tools = build_tools(patient_id, procedure, tooth, trace, imaging_findings)
     agent = create_react_agent(get_llm(), tools)
 
     prompt = SYSTEM.format(
@@ -63,6 +68,23 @@ def investigate(context: dict, trace: Trace, max_steps: int = 12) -> list[Candid
             p.get("text", "") if isinstance(p, dict) else str(p) for p in text)
 
     candidates = _parse_candidates(text)
+
+    # Deterministic backstop: imaging the vision gate validated as relevant to the procedure
+    # site enters the candidate pool even if the model under-reports it. The Skeptic still
+    # challenges it like any candidate. (ponytail: plumbing, not judgment — Jev judges.)
+    covered = {eid for c in candidates for eid in c.evidence_ids}
+    for f in imaging_findings:
+        eid = f.get("evidence_id")
+        if eid and f.get("relevant") and f.get("region_match") and eid not in covered:
+            candidates.append(Candidate(
+                title="Imaging record covering the procedure site",
+                summary=f"An imaging record ({eid}) covers the {f.get('region_label', 'procedure')} region.",
+                record_type="imaging",
+                evidence_ids=[eid],
+                reason="Recent imaging of the procedure site was located during pre-procedure review.",
+            ))
+            covered.add(eid)
+
     trace.add("guardian", "candidates",
               f"Proposed {len(candidates)} candidate record(s) for challenge")
     return candidates

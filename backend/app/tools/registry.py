@@ -8,7 +8,11 @@ from app.tools import records, imaging, conversations
 from app.trace import Trace
 
 
-def build_tools(patient_id: str, procedure: str, tooth_number, trace: Trace):
+def build_tools(patient_id: str, procedure: str, tooth_number, trace: Trace,
+                imaging_findings: list | None = None):
+    """imaging_findings: optional list that collects read_imaging results, so the pipeline
+    can deterministically promote gate-validated relevant imaging into the candidate pool
+    (small models under-report these; the Skeptic still challenges them)."""
     def _dump(rs):
         return [r.model_dump(mode="json") for r in rs]
 
@@ -74,7 +78,10 @@ def build_tools(patient_id: str, procedure: str, tooth_number, trace: Trace):
     def read_imaging(record_id: str) -> dict:
         """Look at one imaging record to locate its region and check relevance. Never diagnoses."""
         trace.add("guardian", "tool_call", f"Inspected imaging record {record_id}")
-        return imaging.read_imaging(record_id, procedure, tooth_number)
+        result = imaging.read_imaging(record_id, procedure, tooth_number)
+        if imaging_findings is not None:
+            imaging_findings.append(result)
+        return result
 
     return [get_patient_summary, get_dental_history, get_active_medications,
             get_medication_history, get_allergies, get_medical_conditions,
