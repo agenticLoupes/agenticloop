@@ -14,6 +14,7 @@ export interface ResultCard {
   reason_shown: string;
   evidence_ids: string[];
   image_url?: string | null;
+  image_caption?: string | null;
 }
 
 export interface InvestigationState {
@@ -97,6 +98,24 @@ export const getEvidence = (evidenceId: string) => {
   const type = RECORD_TYPE_BY_PREFIX[evidenceId.split("-")[0]] ?? "record";
   return request<EvidenceRecord>(`/evidence/${type}/${evidenceId}`);
 };
+
+export interface ChatTurn {
+  role: "dentist" | "assistant";
+  content: string;
+}
+
+export const askAboutCase = (
+  runId: string,
+  question: string,
+  history: ChatTurn[] = [],
+  init?: RequestInit
+) =>
+  request<{ answer: string }>(`/investigations/${runId}/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, history }),
+    ...init,
+  });
 
 export const resetDemo = () =>
   request<unknown>("/demo/reset", { method: "POST" });

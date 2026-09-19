@@ -96,7 +96,7 @@ export default function EvidenceModal({
                 ],
                 ...Object.entries(record.data).filter(
                   ([k]) =>
-                    !["id", "patient_id", "recorded_at", "source_label", "image_url"].includes(k)
+                    !["id", "patient_id", "recorded_at", "source_label", "image_url", "metadata"].includes(k)
                 ),
               ].map(([k, v]) => (
                 <div key={String(k)} className="contents">
@@ -109,14 +109,32 @@ export default function EvidenceModal({
                 </div>
               ))}
             </dl>
-            {imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imageUrl}
-                alt={`Synthetic radiograph ${record.record_id}`}
-                className="mt-4 w-full rounded-md border border-stone-200"
-              />
-            )}
+            {(() => {
+              const meta = record.data.metadata as { description?: string } | null;
+              const description = meta && typeof meta === "object" ? meta.description : null;
+              return (
+                <>
+                  {description && (
+                    <div className="mt-4 rounded-md bg-stone-100 px-3 py-2.5">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-stone-400">
+                        Description
+                      </p>
+                      <p className="mt-1 text-[13px] leading-relaxed text-stone-700">
+                        {description}
+                      </p>
+                    </div>
+                  )}
+                  {imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imageUrl}
+                      alt={description ?? `Synthetic radiograph ${record.record_id}`}
+                      className="mt-4 w-full rounded-md border border-stone-200"
+                    />
+                  )}
+                </>
+              );
+            })()}
           </>
         )}
       </div>

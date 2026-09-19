@@ -42,5 +42,9 @@ def test_imaging_rows_have_ground_truth_region():
     ids = {r["id"] for r in rows}
     assert {"IMG-001", "IMG-002", "IMG-003"} <= ids
     for r in rows:
-        assert r["region_label"], f"{r['id']} missing region_label ground truth"
-        assert r["image_url"].endswith(".png")
+        if r["id"].startswith("IMG-UP-"):
+            # uploads deliberately carry NO ground truth -> they can only ever VERIFY
+            assert r["region_label"] is None
+        else:
+            assert r["region_label"], f"{r['id']} missing region_label ground truth"
+            assert r["image_url"].endswith(".png")

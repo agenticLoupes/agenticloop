@@ -13,3 +13,6 @@ venv/
 # verification runs (pids, logs, evidence)
 .verify/
 *.egg-info/
+
+# runtime user uploads — never commit
+db/assets/uploads/
