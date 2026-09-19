@@ -9,3 +9,7 @@ node_modules/
 dist/
 .venv/
 venv/
+
+# verification runs (pids, logs, evidence)
+.verify/
+*.egg-info/
