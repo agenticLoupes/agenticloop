@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getPatients, type Patient } from "@/lib/api";
+import { API_URL, getPatients, type Patient } from "@/lib/api";
 
 // What each authored scenario demonstrates (db/scenarios.md) — so testers know where to look.
 // suggested = the procedure+tooth that exercises the scenario; pre-filled on selection.
@@ -91,6 +91,7 @@ export default function PatientSelect({
 }) {
   const [patients, setPatients] = useState<Patient[] | null>(null);
   const [error, setError] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const load = () => {
     setError(false);
@@ -129,6 +130,7 @@ export default function PatientSelect({
       {patients && (
         <ul className="divide-y divide-stone-200 overflow-hidden rounded-lg border border-stone-200 bg-white">
           {[...patients]
+            .filter((p) => showAll || SCENARIO_HINTS[p.id])
             .sort((a, b) => (SCENARIO_HINTS[b.id] ? 1 : 0) - (SCENARIO_HINTS[a.id] ? 1 : 0))
             .map((p) => {
               const s = SCENARIO_HINTS[p.id];
@@ -138,17 +140,22 @@ export default function PatientSelect({
                     onClick={() => onSelect(p, s?.suggested)}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-teal-50/60 focus-visible:bg-teal-50/60 focus-visible:outline-none"
                   >
-                    <span
-                      aria-hidden
-                      className={
-                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-md border " +
-                        (s?.thumb
-                          ? "border-teal-200 bg-teal-50 text-teal-700" // film on file
-                          : "border-stone-200 bg-stone-50 text-stone-400")
-                      }
-                    >
-                      <TagIcon tag={s?.thumb ? "IMAGING" : s?.tag ?? ""} />
-                    </span>
+                    {s?.thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`${API_URL}${s.thumb}`}
+                        alt=""
+                        aria-hidden
+                        className="h-12 w-12 shrink-0 rounded-lg border border-teal-200 object-cover shadow-sm"
+                      />
+                    ) : (
+                      <span
+                        aria-hidden
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-stone-50 text-stone-400"
+                      >
+                        <TagIcon tag={s?.tag ?? ""} />
+                      </span>
+                    )}
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span className="font-mono text-sm font-medium text-stone-800">
@@ -178,6 +185,16 @@ export default function PatientSelect({
               );
             })}
         </ul>
+      )}
+      {patients && patients.some((p) => !SCENARIO_HINTS[p.id]) && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="mt-3 w-full text-center text-xs uppercase tracking-wider text-stone-400 underline-offset-2 hover:text-stone-600 hover:underline"
+        >
+          {showAll
+            ? "Hide background patients"
+            : `Show ${patients.filter((p) => !SCENARIO_HINTS[p.id]).length} background patients`}
+        </button>
       )}
     </section>
   );
