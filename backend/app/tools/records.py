@@ -88,7 +88,10 @@ def get_medication_history(patient_id: str, medication_name: Optional[str] = Non
 
 def get_allergies(patient_id: str) -> list[Record]:
     with get_conn() as c:
-        rows = c.execute("select * from allergy where patient_id = %s", (patient_id,)).fetchall()
+        rows = c.execute(
+            "select * from allergy where patient_id = %s order by recorded_at desc nulls last",
+            (patient_id,),
+        ).fetchall()
     return [_to_record(r, "allergy") for r in rows]
 
 
@@ -98,6 +101,7 @@ def get_medical_conditions(patient_id: str, status: Optional[str] = None) -> lis
     if status:
         sql += " and status = %s"
         params.append(status)
+    sql += " order by recorded_at desc nulls last"
     with get_conn() as c:
         rows = c.execute(sql, tuple(params)).fetchall()
     return [_to_record(r, "medical_condition") for r in rows]

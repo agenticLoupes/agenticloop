@@ -24,7 +24,7 @@ create table if not exists medical_condition (
     id            text primary key,            -- COND-###
     patient_id    text not null references patient(id) on delete cascade,
     condition_name text not null,
-    status        text,                        -- active | resolved | ...
+    status        text check (status in ('active','resolved')),  -- fail loud on typo, not silent-wrong
     recorded_at   timestamptz,
     metadata      jsonb not null default '{}'::jsonb
 );
@@ -33,7 +33,7 @@ create table if not exists medication (
     id             text primary key,           -- MED-###
     patient_id     text not null references patient(id) on delete cascade,
     medication_name text not null,
-    status         text,                        -- active | discontinued | ...
+    status         text check (status in ('active','discontinued')),  -- get_active_medications depends on exact match
     recorded_at    timestamptz,
     ended_at       timestamptz,
     metadata       jsonb not null default '{}'::jsonb
@@ -44,7 +44,7 @@ create table if not exists allergy (
     patient_id  text not null references patient(id) on delete cascade,
     substance   text not null,
     reaction    text,
-    status      text,
+    status      text check (status in ('active','resolved')),
     recorded_at timestamptz,
     metadata    jsonb not null default '{}'::jsonb
 );
@@ -106,4 +106,11 @@ create table if not exists agent_event (
 
 create index if not exists idx_dental_event_patient on dental_event(patient_id);
 create index if not exists idx_medication_patient on medication(patient_id);
-create index if not exists idx_agent_event_run on agent_event(run_id, sequence_no);
+create index if not exists idx_allergy_patient on allergy(patient_id);
+create index if not exists idx_medical_condition_patient on medical_condition(patient_id);
+create index if not exists idx_clinical_note_patient on clinical_note(patient_id);
+create index if not exists idx_imaging_study_patient on imaging_study(patient_id);
+create index if not exists idx_conversation_transcript_patient on conversation_transcript(patient_id);
+create index if not exists idx_investigation_run_patient on investigation_run(patient_id);
+-- unique: agent trace ordering must be unambiguous per run (rejects duplicate steps at the DB)
+create unique index if not exists idx_agent_event_run_seq on agent_event(run_id, sequence_no);
