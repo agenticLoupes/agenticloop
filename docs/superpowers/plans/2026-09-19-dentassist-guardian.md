@@ -82,7 +82,7 @@ DentAssist-Guardian/
     └── lib/api.ts                  # typed client for the minimal API (§16)
 ```
 
-**Boundary rationale:** `tools/records.py` is the *only* code that reads patient rows — agents receive its typed results, never raw SQL. `graph.py` owns control flow; agent modules own single-responsibility prompting/decisions. Frontend never talks to OpenAI, Jev, or Supabase directly — only to FastAPI.
+**Boundary rationale:** `tools/records.py` is the *only* code that reads patient rows — agents receive its typed results, never raw SQL. `graph.py` owns control flow; agent modules own single-responsibility prompting/decisions. Frontend never talks to Gemini, Jev, or Supabase directly — only to FastAPI.
 
 ---
 
