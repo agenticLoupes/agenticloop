@@ -29,6 +29,7 @@ jobs:
           python - <<'PY'
           import importlib, pathlib
           for p in pathlib.Path('.').rglob('*.py'):
+              if p.parts[0] == 'tests': continue
               mod = '.'.join(p.with_suffix('').parts)
               if mod.endswith('__init__'): mod = mod[:-9]
               if mod: importlib.import_module(mod)
@@ -45,7 +46,7 @@ jobs:
       - name: Run tests if any exist
         working-directory: backend
         run: |
-          if ls test_*.py tests/ 2>/dev/null | grep -q .; then pip install pytest && pytest -q; else echo "no tests yet"; fi
+          if ls tests/test_*.py >/dev/null 2>&1; then pip install -q pytest && pytest -q; else echo "no tests yet"; fi
 
   frontend:
     runs-on: ubuntu-latest
