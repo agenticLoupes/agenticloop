@@ -199,7 +199,7 @@ export default function Home() {
     <main className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-lg flex-col px-5 pb-10 pt-7">
       <header className="mb-6">
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold uppercase tracking-tight text-stone-900">
-          DentAssist <span className="text-teal-800">Guardian</span>
+          LOUPE<span className="text-teal-800">IN</span>
         </h1>
         <p className="mt-1 text-sm text-stone-600">
           A second pair of eyes on the chart before you start.
