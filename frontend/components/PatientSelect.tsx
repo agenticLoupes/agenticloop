@@ -13,24 +13,68 @@ const SCENARIO_HINTS: Record<
 > = {
   "DEMO-007": { tag: "SURFACE + TRANSCRIPT", hint: "Active Warfarin — and a visit transcript that contradicts it", suggested: { procedure: "extraction", tooth: 30 } },
   "DEMO-008": { tag: "SILENCE", hint: "Stale history only — the agent should stay quiet", suggested: { procedure: "extraction", tooth: 3 } },
-  "DEMO-009": { tag: "VERIFY", hint: "A note mentions a medication change; current status unknown", suggested: { procedure: "extraction", tooth: 19 }, thumb: "/assets/imaging/IMG-003.png" },
-  "DEMO-010": { tag: "IMAGING", hint: "Radiograph of the extraction site — vision review", suggested: { procedure: "extraction", tooth: 30 }, thumb: "/assets/imaging/IMG-001.png" },
-  "DEMO-011": { tag: "IMAGING", hint: "Implant candidate — radiograph of the #8 region on file", suggested: { procedure: "implant", tooth: 8 }, thumb: "/assets/imaging/IMG-004.png" },
+  "DEMO-009": { tag: "VERIFY", hint: "A note mentions a medication change; current status unknown", suggested: { procedure: "extraction", tooth: 19 }, thumb: "/assets/imaging/IMG-003_thumb.png" },
+  "DEMO-010": { tag: "IMAGING", hint: "Radiograph of the extraction site — vision review", suggested: { procedure: "extraction", tooth: 30 }, thumb: "/assets/imaging/IMG-001_thumb.png" },
+  "DEMO-011": { tag: "IMAGING", hint: "Implant candidate — radiograph of the #8 region on file", suggested: { procedure: "implant", tooth: 8 }, thumb: "/assets/imaging/IMG-004_thumb.png" },
   "DEMO-012": { tag: "ALLERGY", hint: "Documented latex sensitivity — relevant to most procedures", suggested: { procedure: "root_canal", tooth: 9 } },
   "DEMO-014": { tag: "ALLERGY", hint: "Documented lidocaine reaction + diabetes", suggested: { procedure: "filling", tooth: 12 } },
   "DEMO-016": { tag: "TRANSCRIPT", hint: "On an anticoagulant; benign visit transcript", suggested: { procedure: "extraction", tooth: 14 } },
-  "DEMO-017": { tag: "IMAGING", hint: "Radiograph of the #30 region on file", suggested: { procedure: "crown", tooth: 30 }, thumb: "/assets/imaging/IMG-005.png" },
+  "DEMO-017": { tag: "IMAGING", hint: "Radiograph of the #30 region on file", suggested: { procedure: "crown", tooth: 30 }, thumb: "/assets/imaging/IMG-005_thumb.png" },
 };
 
-// scenario-type glyph for cases without a film on file (typographic, matches the design)
-const TAG_GLYPH: Record<string, string> = {
-  "SURFACE + TRANSCRIPT": "Rx",
-  SILENCE: "—",
-  VERIFY: "?",
-  ALLERGY: "!",
-  TRANSCRIPT: "“”",
-  IMAGING: "▣",
-};
+// scenario-type icon for cases without a film on file (stroke SVGs, clinical style)
+function TagIcon({ tag }: { tag: string }) {
+  const cls = "h-5 w-5";
+  const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  switch (tag) {
+    case "SURFACE + TRANSCRIPT": // pill / medication
+      return (
+        <svg viewBox="0 0 24 24" className={cls} {...stroke}>
+          <rect x="3.5" y="8.5" width="17" height="7" rx="3.5" transform="rotate(-35 12 12)" />
+          <line x1="9.4" y1="13.8" x2="14.6" y2="10.2" />
+        </svg>
+      );
+    case "ALLERGY": // alert triangle
+      return (
+        <svg viewBox="0 0 24 24" className={cls} {...stroke}>
+          <path d="M12 4 21 19 H3 Z" />
+          <line x1="12" y1="10" x2="12" y2="14" />
+          <circle cx="12" cy="16.6" r="0.4" />
+        </svg>
+      );
+    case "TRANSCRIPT": // speech bubble
+      return (
+        <svg viewBox="0 0 24 24" className={cls} {...stroke}>
+          <path d="M4 6 h16 v10 h-9 l-4 3.5 v-3.5 h-3 Z" />
+          <line x1="8" y1="10" x2="16" y2="10" />
+          <line x1="8" y1="13" x2="13" y2="13" />
+        </svg>
+      );
+    case "VERIFY": // magnifier with ?
+      return (
+        <svg viewBox="0 0 24 24" className={cls} {...stroke}>
+          <circle cx="10.5" cy="10.5" r="6" />
+          <line x1="15" y1="15" x2="20" y2="20" />
+          <path d="M8.8 9 a1.7 1.7 0 1 1 2.4 1.7 c-0.5 0.25 -0.7 0.55 -0.7 1.1" />
+          <circle cx="10.5" cy="13.6" r="0.35" />
+        </svg>
+      );
+    case "SILENCE": // bell, slashed
+      return (
+        <svg viewBox="0 0 24 24" className={cls} {...stroke}>
+          <path d="M8 16 v-5 a4 4 0 0 1 8 0 v5 l1.5 2 h-11 Z" />
+          <path d="M10.5 20.5 a1.8 1.8 0 0 0 3 0" />
+          <line x1="4.5" y1="4.5" x2="19.5" y2="19.5" />
+        </svg>
+      );
+    default: // record dot
+      return (
+        <svg viewBox="0 0 24 24" className={cls} {...stroke}>
+          <circle cx="12" cy="12" r="3.5" />
+        </svg>
+      );
+  }
+}
 
 export default function PatientSelect({
   onSelect,
@@ -97,9 +141,9 @@ export default function PatientSelect({
                     ) : (
                       <span
                         aria-hidden
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-stone-100 font-mono text-sm text-stone-400"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-stone-200 bg-stone-50 text-stone-400"
                       >
-                        {s ? TAG_GLYPH[s.tag] ?? "·" : "·"}
+                        <TagIcon tag={s?.tag ?? ""} />
                       </span>
                     )}
                     <span className="min-w-0 flex-1">
