@@ -65,7 +65,7 @@ Either way, **name the track explicitly in the write-up and in the first 15 seco
 
 | Question | Decision |
 |---|---|
-| Framework | **Split.** Realtime path = plain async Python + Gemini Live. Reasoning path = LangGraph. See §3.1 — the split is not optional. |
+| Framework | **Split.** Realtime path = plain async Python + `gpt-live-1` (audio) with client-delegation relay to `gpt-5.6-terra` (vision + tool orchestration). Reasoning path (reconcile) = LangGraph. See §3.1 — the split is not optional. |
 | Platform | Web (React). Not native. Runs in phone browser. |
 | DB | **Supabase** (Postgres). Patient records, session memory, case corpus. |
 | Retrieval | Postgres queries keyed by tooth number. pgvector only if ahead of schedule. |
@@ -76,9 +76,13 @@ Either way, **name the track explicitly in the write-up and in the first 15 seco
 
 ### 3.1 Where LangChain / LangGraph goes — and where it cannot
 
-**It cannot own the realtime path.** Gemini Live is a persistent bidirectional WebSocket streaming PCM audio in and out with server-side VAD. LangChain has no abstraction for that — its model interfaces are request/response. There is no adapter to reach for. If you try to route the voice loop through LangChain you will spend three hours discovering this. `live_session.py` stays raw `websockets`.
+**It cannot own the realtime path.** `gpt-live-1` is a persistent, full-duplex audio session (WebSocket server-side, WebRTC in-browser, GA'd Sept 10 2026). It only listens and speaks: **no image input**, and it does not reason on its own — it delegates every turn to a backend model. LangChain has no abstraction for a persistent audio socket either way; its model interfaces are request/response. `live_session.py` stays raw `websockets` for the audio leg.
 
-**It should own the reasoning path.** `reconcile.py` is genuinely a graph: read findings → compare to history → branch on divergence type → decide whether to interrupt. That's what LangGraph is for, and it's the one place a framework earns its weight today.
+**The vision + tool brain is `gpt-5.6-terra`, reached over the Responses API — this is a relay, not shared state.** There is no OpenAI product where a voice model and a vision model jointly receive audio+video and update shared state in real time; we checked before committing. What we actually build, using **client delegation** (not OpenAI's managed Responses delegation — we need to inject our own frames): on each delegated turn the backend forwards the transcript text **plus the latest camera frame as image input** to Terra. Terra owns all four tool calls (§7.2) and returns text; `gpt-live-1` speaks it. Only periodic still frames, not continuous video — nobody ships live video into a voice session yet. Budget for the extra network hop (§7.3, §13).
+
+> ⚠️ **`gpt-live-1` GA'd nine days before our deadline.** Its exact WebSocket event schema and audio codec are not yet widely known. Pull them from `developers.openai.com/api/docs/guides/live` and `.../guides/live-delegation` **at T+0:00**. Do not build from memory, and do not copy the older `gpt-realtime` Realtime API examples — the message shapes differ.
+
+**It should own the cross-turn reasoning path.** `reconcile.py` is genuinely a graph: read findings → compare to history → branch on divergence type → decide whether to interrupt. That's what LangGraph is for, and it's the one place a framework earns its weight today. Unchanged by the above — reconcile runs *after* Terra's tool calls, not instead of them.
 
 Use **LangGraph**, not classic LangChain chains. Chains are the wrong abstraction and the deprecated half of the library.
 
@@ -114,11 +118,17 @@ MedGemma and MedSigLIP are trained on chest X-rays, dermatology, ophthalmology, 
 └──────────────────────────────────────────────────────────┼────────────────┘
                                                            │ our WebSocket
 ┌──────────────────────── BACKEND (FastAPI) ────────────────▼───────────────┐
-│  ws_relay ──► wake_word gate ──► Gemini Live session (persistent WSS)      │
-│                                        │ function_call                    │
+│  ws_relay ──► wake_word gate ──► gpt-live-1 session (persistent WSS)      │
+│                          latest frame  │ client delegation (transcript)   │
+│                          held in       │                                  │
+│                          session state │                                  │
 │         ┌──────────────────────────────▼──────────────────────────┐       │
-│         │ TOOLS                                                   │       │
-│         │  detect_teeth(frame)          ──► Roboflow YOLO         │       │
+│         │ gpt-5.6-terra  (Responses API) — reasoning + vision     │       │
+│         │   in:  transcript text + latest JPEG frame (image)      │       │
+│         │   out: text → spoken by gpt-live-1                      │       │
+│         │                                                         │       │
+│         │ TOOLS (declared on Terra, run by us)                    │       │
+│         │  detect_teeth()               ──► Roboflow YOLO         │       │
 │         │  get_tooth_record(n)          ──► Supabase              │       │
 │         │  find_similar_cases(finding)  ──► Supabase + MedGemma   │       │
 │         │  log_finding(n, obs)          ──► Supabase  [autonomous]│       │
@@ -143,8 +153,9 @@ MedGemma and MedSigLIP are trained on chest X-rays, dermatology, ophthalmology, 
 
 | Layer | Model | Notes |
 |---|---|---|
-| Realtime voice + video | `gemini-2.5-flash-native-audio-preview-12-2025` | Only option with bidi audio. STT, TTS, orchestration, tool calls. |
-| Tooth detection + FDI numbering | `teeth-detection-and-numbering-agi2i/18` (Roboflow) | Hosted API. Browser `inferencejs` if latency is bad. |
+| Realtime voice | `gpt-live-1` | Full-duplex audio in/out, interruptible, no manual VAD. **Audio only — no image input, no reasoning.** Delegates every turn to Terra. ~$0.05/min. |
+| Vision + reasoning + tool orchestration | `gpt-5.6-terra` (Responses API) | Gets transcript text + latest JPEG frame. Owns all 4 tool calls. Text out, spoken by `gpt-live-1`. Image-in/text-out only — never audio. |
+| Tooth detection + FDI numbering | `teeth-detection-and-numbering-agi2i/18` (Roboflow) | Hosted API. Still our numbering source of truth — Terra reads the scene, Roboflow assigns the numbers. Browser `inferencejs` if latency is bad. |
 | X-ray pathology (optional) | `liodon-ai/dental-panoramic-detector` | Caries recall is weak — present as screening hint, not diagnosis. |
 | Clinical reasoning + reconcile | `google/medgemma-27b-text-it` via Featherless | Our $25. Low volume. **Warm it before every run.** |
 
@@ -215,17 +226,18 @@ agentic-loupes/
 │
 ├── backend/                                            [OWNER: A]
 │   ├── main.py                 # FastAPI app, /ws endpoint
-│   ├── live_session.py         # Gemini Live WSS session manager
+│   ├── live_session.py         # gpt-live-1 WSS session + latest-frame state
 │   ├── wake_word.py            # regex gate on transcript
 │   ├── reconcile.py            # ★ autonomous divergence check (§1)
 │   ├── schemas.py              # SHARED CONTRACT, see §7
 │   ├── tools/
-│   │   ├── __init__.py         # TOOL_DECLARATIONS for Live config
+│   │   ├── __init__.py         # TOOL_DECLARATIONS + async dispatch (§7.3)
 │   │   ├── detect_teeth.py     [A]
 │   │   ├── tooth_record.py     [B]
 │   │   ├── similar_cases.py    [B]
 │   │   └── log_finding.py      [B]
 │   ├── clients/
+│   │   ├── terra.py            # gpt-5.6-terra Responses API relay [A]
 │   │   ├── roboflow.py
 │   │   ├── featherless.py
 │   │   └── supabase.py
@@ -292,8 +304,9 @@ Box coords **normalized 0–1**, origin top-left. C scales to canvas and never n
 ### 7.2 Tool signatures
 
 ```python
-def detect_teeth(frame_b64: str) -> dict:
-    """-> {"boxes": [Box, ...]}"""
+def detect_teeth() -> dict:
+    """NO frame argument. Reads the latest frame from server-side session state.
+    -> {"boxes": [Box, ...]}"""
 
 def get_tooth_record(tooth: str, patient_id: str) -> dict:
     """-> teeth row + recent session_findings for that tooth"""
@@ -305,7 +318,18 @@ def log_finding(tooth: str, observation: str, source: str, confidence: float) ->
     """-> {"id": int}   ← called autonomously, not on user request"""
 ```
 
+**Why `detect_teeth` takes no frame.** A model-called tool receives JSON arguments the model emits itself — so a `frame_b64` parameter would require Terra to write an entire base64 JPEG into a function-call argument. It won't, and at any usable resolution it can't. The backend already receives frames on its own WebSocket (§7.1) and holds the newest one in session state; the tool reads it from there. **This is the contract: `detect_teeth()`, zero arguments.** A builds the dispatcher against it, A builds the implementation against it.
+
 All sync, all return JSON-serializable dicts. A stubs them in minute one with hardcoded returns and is never blocked on B.
+
+### 7.3 Async dispatch — do not block the audio relay
+
+`dispatch()` in `tools/__init__.py` is **`async`** and runs each sync tool via `asyncio.to_thread(...)`. The tools themselves stay sync exactly as written above — only the dispatcher changes. Call them synchronously from inside the relay loop and the mic freezes for the full round-trip: `find_similar_cases` is a Supabase query *plus* a MedGemma call on Featherless, whose cold start is already a named risk (§13). That alone blows the sub-3s promise in §1.
+
+Two more mitigations, both worth the ~20 minutes:
+
+- **Speculative prefetch.** The instant `detect_teeth` returns a high-confidence box, fire `get_tooth_record` for that tooth in the background and cache it. By the time the dentist finishes saying *"what's the history on nineteen"*, the record is already in memory. This is what actually buys the sub-3s number on camera.
+- **Precompute the flag.** `reconcile.py` runs after *every* turn, so the §1 flag for tooth 19 is computed and cached back at demo step 4 — long before step 6's *"ready to numb."* Do **not** run reconcile + MedGemma synchronously at that line; read a cached variable. Give it a per-tooth cooldown too, so the same flag never fires twice — §3 promises the system never speaks unprompted except this flag, and a repeat reads as a bug to judges.
 
 ---
 
@@ -341,6 +365,7 @@ Repo must be **publicly viewable**. Verify in an incognito window before submitt
 ### T+0:00 → 0:30, everyone together
 - Agree §7 contracts. Commit `schemas.py` and `ws.js` with types only.
 - Create Supabase project, run `schema.sql`, share keys in the team channel.
+- **A: pull the `gpt-live-1` docs before writing a line** — `developers.openai.com/api/docs/guides/live` and `.../guides/live-delegation`. It GA'd Sept 10; the wire schema is not memorized by anyone or any tool, and the older `gpt-realtime` examples have different message shapes.
 - **A: smoke-test Roboflow against a real frame from the demo video.** If numbering fails → fall back to generic detection + dentist speaks the number. Decide now, not at hour four.
 - **B: run `warmup_featherless.py`.** Confirm `google/medgemma-27b-text-it` resolves; time the cold start.
 - **C: get HTTPS working** (`vite --host` + ngrok). `getUserMedia` is blocked on plain HTTP from a non-localhost origin. This kills more demos than any model problem.
@@ -348,7 +373,9 @@ Repo must be **publicly viewable**. Verify in an incognito window before submitt
 ### 0:30 → 3:00, parallel
 
 **A — realtime backend** *(strongest engineer, critical path)*
-Gemini Live WSS session · wake-word gate (system instruction **and** client-side regex — both; the instruction alone leaks) · register 4 tools · `detect_teeth` wired to Roboflow
+`gpt-live-1` WSS session · wake-word gate (system instruction **and** client-side regex — both; the instruction alone leaks) · client-delegation relay to `gpt-5.6-terra` with latest frame attached · 4 tools declared on Terra · `detect_teeth` wired to Roboflow
+
+*Build the `gpt-live-1` leg headless first* — a ~50-line script that opens a session, sends a local WAV, prints the transcript, writes the returned audio to a file. Then add one fake tool call. Only then open `main.py`. Building the audio session **inside** FastAPI means debugging two unknowns through one socket.
 
 **B — data, tools, autonomous loop**
 `seed.sql` (one patient, 4 teeth fully populated — nobody looks at 32) · 15 cases · `get_tooth_record`, `log_finding`, `find_similar_cases` · **`reconcile.py`, the §1 divergence check** · `PROVENANCE.md`
@@ -401,7 +428,7 @@ cd frontend && npm install && npm run dev -- --host
 
 `.env.example`:
 ```
-GEMINI_API_KEY=
+OPENAI_API_KEY=              # gpt-live-1 and gpt-5.6-terra both
 ROBOFLOW_API_KEY=
 FEATHERLESS_API_KEY=
 SUPABASE_URL=
@@ -417,6 +444,9 @@ WAKE_PHRASE=hey loupes
 
 | Risk | Mitigation |
 |---|---|
+| **`gpt-live-1` is 9 days old — wire schema unfamiliar** | Pull the official live + delegation guides at T+0:00. Build the audio leg headless before FastAPI. Never copy `gpt-realtime` examples. |
+| **Terra relay adds a network hop per turn** | Prefetch + cache + precomputed flag (§7.3). If the relay is still slow at T+3:00, drop frame rate to Terra before dropping features. |
+| Vision is still frames, not video | By design — no OpenAI model takes live video yet. 1–2 FPS into Terra is enough; Roboflow does the per-frame numbering. |
 | Roboflow numbering fails on our footage | Test at T+0:15. Fall back to generic detection + spoken number. |
 | Featherless cold start | Warm before every rehearsal and before recording. |
 | Agent talks at the wrong moment | Double wake-word gate. The §1 flag is the *only* sanctioned interruption. |
