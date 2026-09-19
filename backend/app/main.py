@@ -1,4 +1,4 @@
-"""DentAssist Guardian API (§16). Model keys live server-side only (§14)."""
+"""LOUPEIN API (§16). Model keys live server-side only (§14)."""
 from pathlib import Path
 
 import uuid
@@ -19,7 +19,7 @@ from app.graph import execute_run, start_run
 from app.live import router as live_router
 from app.tools.records import TYPE_CONFIG, get_record
 
-app = FastAPI(title="DentAssist Guardian", description="SYNTHETIC DATA — PROTOTYPE")
+app = FastAPI(title="LOUPEIN", description="SYNTHETIC DATA — PROTOTYPE")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(live_router)
 

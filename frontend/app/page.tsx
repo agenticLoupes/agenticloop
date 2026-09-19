@@ -24,6 +24,52 @@ const FOLLOW_POLL_MS = 2000;
 
 type Step = "patient" | "procedure" | "investigating" | "results" | "error";
 
+const STEP_LABELS = ["Patient", "Procedure", "Review"] as const;
+const STEP_INDEX: Record<Step, number> = {
+  patient: 0,
+  procedure: 1,
+  investigating: 2,
+  results: 2,
+  error: 2,
+};
+
+function Stepper({ current }: { current: number }) {
+  return (
+    <ol className="mb-8 flex items-center gap-2" aria-label="Progress">
+      {STEP_LABELS.map((label, i) => {
+        const done = i < current;
+        const active = i === current;
+        return (
+          <li key={label} className="flex flex-1 items-center gap-2">
+            <span
+              aria-hidden
+              className={
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold " +
+                (done
+                  ? "bg-teal-700 text-white"
+                  : active
+                    ? "bg-teal-700 text-white"
+                    : "border border-stone-300 bg-white text-stone-500")
+              }
+            >
+              {done ? "✓" : i + 1}
+            </span>
+            <span
+              className={
+                "truncate text-sm " +
+                (active ? "font-semibold text-stone-900" : "text-stone-500")
+              }
+            >
+              {label}
+              {active && <span className="sr-only"> (current step)</span>}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export default function Home() {
   const [step, setStep] = useState<Step>("patient");
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -150,16 +196,17 @@ export default function Home() {
   };
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-md flex-col px-5 pb-10 pt-8">
-      <header className="mb-8">
-        <h1 className="font-[family-name:var(--font-display)] text-xl font-bold uppercase tracking-tight text-stone-900">
-          DentAssist{" "}
-          <span className="text-teal-800">Guardian</span>
+    <main className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-lg flex-col px-5 pb-10 pt-7">
+      <header className="mb-6">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold uppercase tracking-tight text-stone-900">
+          LOUPE<span className="text-teal-800">IN</span>
         </h1>
-        <p className="mt-0.5 text-xs italic text-stone-500">
-          Before you begin, let the record challenge the plan.
+        <p className="mt-1 text-sm text-stone-600">
+          A second pair of eyes on the chart before you start.
         </p>
       </header>
+
+      <Stepper current={STEP_INDEX[step]} />
 
       <LiveTranscript />
 
@@ -167,9 +214,9 @@ export default function Home() {
         {(step === "results" || step === "error") && (
           <button
             onClick={restart}
-            className="mb-4 text-xs uppercase tracking-wider text-stone-500 hover:text-stone-800"
+            className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-stone-600 hover:text-teal-800"
           >
-            ← All patients
+            <span aria-hidden>←</span> Back to all patients
           </button>
         )}
         {step === "patient" && (
@@ -213,28 +260,28 @@ export default function Home() {
         )}
 
         {step === "error" && (
-          <section className="rounded-lg border border-stone-300 bg-white p-5">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-700">
-              Recoverable demo error
+          <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-stone-900">
+              The check didn&apos;t finish
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-stone-600">
-              The investigation could not be completed. No result was invented.
-              You can retry the check safely.
+              Something went wrong along the way, so no result was produced —
+              nothing was guessed or invented. It&apos;s safe to try again.
             </p>
-            <div className="mt-4 flex gap-3">
+            <div className="mt-5 flex flex-wrap gap-3">
               {patient && intent && (
                 <button
                   onClick={() =>
                     investigate(patient.id, intent.procedure, intent.tooth_number)
                   }
-                  className="rounded-md bg-teal-800 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white hover:bg-teal-700"
+                  className="min-h-11 rounded-lg bg-teal-800 px-5 text-sm font-semibold text-white hover:bg-teal-700"
                 >
-                  Retry
+                  Try again
                 </button>
               )}
               <button
                 onClick={restart}
-                className="rounded-md border border-stone-300 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-700 hover:border-stone-500"
+                className="min-h-11 rounded-lg border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-700 hover:border-stone-500"
               >
                 Start over
               </button>
@@ -247,14 +294,14 @@ export default function Home() {
         <EvidenceModal evidenceId={evidenceId} onClose={() => setEvidenceId(null)} />
       )}
 
-      <footer className="mt-10 flex items-center justify-between border-t border-stone-200 pt-4 text-[10px] uppercase tracking-[0.2em] text-stone-400">
-        <span>Synthetic data — prototype</span>
+      <footer className="mt-10 flex items-center justify-between gap-4 border-t border-stone-200 pt-4 text-sm text-stone-500">
+        <span>Prototype — not a medical device.</span>
         <button
           onClick={() => {
             resetDemo().catch(() => {});
             restart();
           }}
-          className="underline-offset-2 hover:text-stone-600 hover:underline"
+          className="min-h-11 font-medium text-stone-600 underline underline-offset-2 hover:text-teal-800"
         >
           Reset demo
         </button>

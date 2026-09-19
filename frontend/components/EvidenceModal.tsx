@@ -48,34 +48,34 @@ export default function EvidenceModal({
         aria-modal="true"
         aria-label={`Source record ${evidenceId}`}
         onClick={(e) => e.stopPropagation()}
-        className="trace-in max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-xl bg-white p-5 shadow-xl sm:rounded-xl"
+        className="trace-in max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl"
       >
         <div className="mb-4 flex items-start justify-between">
           <div>
-            <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold uppercase tracking-tight text-stone-900">
+            <h3 className="text-xl font-semibold text-stone-900">
               Source record
             </h3>
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-400">
-              Synthetic record
+            <p className="mt-0.5 text-sm text-stone-500">
+              Straight from the chart — synthetic demo data.
             </p>
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="rounded-md px-2 py-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+            className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-xl text-stone-500 hover:bg-stone-100 hover:text-stone-800"
           >
             ✕
           </button>
         </div>
 
         {error && (
-          <p className="text-sm text-stone-600">
-            Recoverable demo error — source record unavailable.
+          <p className="text-[15px] text-stone-700">
+            We couldn&apos;t load this record right now. Close and try again.
           </p>
         )}
         {!error && !record && (
-          <p className="animate-pulse font-mono text-sm text-stone-400">
-            Loading record…
+          <p className="animate-pulse text-[15px] text-stone-500">
+            Loading the record…
           </p>
         )}
         {record && (
@@ -100,10 +100,10 @@ export default function EvidenceModal({
                 ),
               ].map(([k, v]) => (
                 <div key={String(k)} className="contents">
-                  <dt className="text-[10px] font-medium uppercase leading-6 tracking-[0.15em] text-stone-400">
+                  <dt className="text-sm capitalize leading-6 text-stone-500">
                     {String(k).replace(/_/g, " ")}
                   </dt>
-                  <dd className="font-mono text-[13px] leading-6 text-stone-800">
+                  <dd className="font-mono text-sm leading-6 text-stone-900">
                     {formatValue(v)}
                   </dd>
                 </div>
@@ -115,11 +115,11 @@ export default function EvidenceModal({
               return (
                 <>
                   {description && (
-                    <div className="mt-4 rounded-md bg-stone-100 px-3 py-2.5">
-                      <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-stone-400">
+                    <div className="mt-4 rounded-lg bg-stone-100 px-3.5 py-3">
+                      <p className="text-sm font-semibold text-stone-700">
                         Description
                       </p>
-                      <p className="mt-1 text-[13px] leading-relaxed text-stone-700">
+                      <p className="mt-1 text-[15px] leading-relaxed text-stone-700">
                         {description}
                       </p>
                     </div>
@@ -129,7 +129,7 @@ export default function EvidenceModal({
                     <img
                       src={imageUrl}
                       alt={description ?? `Synthetic radiograph ${record.record_id}`}
-                      className="mt-4 w-full rounded-md border border-stone-200"
+                      className="mt-4 w-full rounded-lg border border-stone-200"
                     />
                   )}
                 </>
