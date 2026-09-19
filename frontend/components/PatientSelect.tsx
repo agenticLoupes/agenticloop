@@ -3,6 +3,15 @@
 import { useEffect, useState } from "react";
 import { getPatients, type Patient } from "@/lib/api";
 
+// What each authored scenario demonstrates (db/scenarios.md) — so testers know where to look.
+const SCENARIO_HINTS: Record<string, { tag: string; hint: string }> = {
+  "DEMO-007": { tag: "SURFACE + TRANSCRIPT", hint: "Active Warfarin — and a visit transcript that contradicts it" },
+  "DEMO-008": { tag: "SILENCE", hint: "Stale history only — the agent should stay quiet" },
+  "DEMO-009": { tag: "VERIFY", hint: "A note mentions a medication change; current status unknown" },
+  "DEMO-010": { tag: "IMAGING", hint: "Radiograph of the extraction site — vision review" },
+  "DEMO-016": { tag: "TRANSCRIPT", hint: "On an anticoagulant; benign visit transcript" },
+};
+
 export default function PatientSelect({
   onSelect,
 }: {
@@ -47,26 +56,38 @@ export default function PatientSelect({
       )}
       {patients && (
         <ul className="divide-y divide-stone-200 overflow-hidden rounded-lg border border-stone-200 bg-white">
-          {patients.map((p) => (
-            <li key={p.id}>
-              <button
-                onClick={() => onSelect(p)}
-                className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-teal-50/60 focus-visible:bg-teal-50/60 focus-visible:outline-none"
-              >
-                <span>
-                  <span className="block font-mono text-sm font-medium text-stone-800">
-                    {p.demo_identifier}
-                  </span>
-                  <span className="block text-xs text-stone-500">
-                    {p.display_name}
-                  </span>
-                </span>
-                <span aria-hidden className="text-teal-700">
-                  →
-                </span>
-              </button>
-            </li>
-          ))}
+          {[...patients]
+            .sort((a, b) => (SCENARIO_HINTS[b.id] ? 1 : 0) - (SCENARIO_HINTS[a.id] ? 1 : 0))
+            .map((p) => {
+              const s = SCENARIO_HINTS[p.id];
+              return (
+                <li key={p.id}>
+                  <button
+                    onClick={() => onSelect(p)}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-teal-50/60 focus-visible:bg-teal-50/60 focus-visible:outline-none"
+                  >
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-medium text-stone-800">
+                          {p.demo_identifier}
+                        </span>
+                        {s && (
+                          <span className="rounded-sm bg-teal-800/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-teal-800">
+                            {s.tag}
+                          </span>
+                        )}
+                      </span>
+                      <span className="block text-xs text-stone-500">
+                        {s ? s.hint : p.display_name}
+                      </span>
+                    </span>
+                    <span aria-hidden className="shrink-0 text-teal-700">
+                      →
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
         </ul>
       )}
     </section>
