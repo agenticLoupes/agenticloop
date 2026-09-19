@@ -53,7 +53,7 @@ DentAssist-Guardian/
 │   ├── pyproject.toml
 │   ├── app/
 │   │   ├── main.py                 # FastAPI app + routes (§16)
-│   │   ├── config.py               # env/settings (Supabase, Featherless)
+│   │   ├── config.py               # env/settings (Supabase, OpenAI, TypeSafe)
 │   │   ├── db.py                   # connection/pool
 │   │   ├── models.py               # pydantic: Record, InvestigationState, Candidate, Card, AgentEvent
 │   │   ├── playbook.py             # procedure → record-category map (pattern-informed steering)
@@ -82,7 +82,7 @@ DentAssist-Guardian/
     └── lib/api.ts                  # typed client for the minimal API (§16)
 ```
 
-**Boundary rationale:** `tools/records.py` is the *only* code that reads patient rows — agents receive its typed results, never raw SQL. `graph.py` owns control flow; agent modules own single-responsibility prompting/decisions. Frontend never talks to Featherless or Supabase directly — only to FastAPI.
+**Boundary rationale:** `tools/records.py` is the *only* code that reads patient rows — agents receive its typed results, never raw SQL. `graph.py` owns control flow; agent modules own single-responsibility prompting/decisions. Frontend never talks to OpenAI, Jev, or Supabase directly — only to FastAPI.
 
 ---
 
