@@ -8,7 +8,7 @@ dependencies = [
     "uvicorn[standard]",
     "pydantic",
     "pydantic-settings",
-    "psycopg[binary]",
+    "psycopg[binary,pool]",
     "langgraph",
     "langchain-google-genai",
     "typesafe-sdk",

@@ -36,7 +36,9 @@ def test_demo008_has_stale_discontinued_med():
 
 
 def test_imaging_rows_have_ground_truth_region():
-    rows = _q("select id, region_label, image_url from imaging_study order by id")
+    # Seeded studies carry ground truth; dentist-uploaded X-rays (IMG-UP-*) are
+    # VERIFY-only by design and have no region_label, so they are excluded here.
+    rows = _q("select id, region_label, image_url from imaging_study where id not like %s order by id", ("IMG-UP-%",))
     ids = {r["id"] for r in rows}
     assert {"IMG-001", "IMG-002", "IMG-003"} <= ids
     for r in rows:
