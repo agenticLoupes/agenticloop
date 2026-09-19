@@ -78,9 +78,34 @@ def investigate(context: dict, trace: Trace, max_steps: int = 12) -> list[Candid
     # site enters the candidate pool even if the model under-reports it. The Skeptic still
     # challenges it like any candidate. (ponytail: plumbing, not judgment — Jev judges.)
     covered = {eid for c in candidates for eid in c.evidence_ids}
+
+    # uploads must never be silently skipped: inspect any the model didn't touch
+    from app.tools import imaging as imaging_tools
+    inspected = {f.get("evidence_id") for f in imaging_findings}
+    for rec in imaging_tools.get_imaging(patient_id):
+        if rec.data.get("region_label") is None and rec.record_id not in inspected:
+            trace.add("guardian", "tool_call", f"Inspected uploaded image {rec.record_id}")
+            imaging_findings.append(
+                imaging_tools.read_imaging(rec.record_id, procedure, tooth))
+
     for f in imaging_findings:
         eid = f.get("evidence_id")
-        if eid and f.get("relevant") and f.get("region_match") and eid not in covered:
+        if not eid or eid in covered:
+            continue
+        if f.get("uploaded"):
+            # uploaded image: no ground truth → always a candidate, and its uncertainty is
+            # stated so the Skeptic lands on VERIFY (the dentist must review it).
+            candidates.append(Candidate(
+                title="Uploaded imaging for this case",
+                summary=(f"An uploaded image ({eid}) was reviewed; reported region: "
+                         f"{f.get('region_reported') or 'not established'}. It has no verified "
+                         "source label, so its relevance cannot be established automatically."),
+                record_type="imaging",
+                evidence_ids=[eid],
+                reason="Uploaded during pre-procedure review; requires the dentist's own review.",
+            ))
+            covered.add(eid)
+        elif f.get("relevant") and f.get("region_match"):
             candidates.append(Candidate(
                 title="Imaging record covering the procedure site",
                 summary=f"An imaging record ({eid}) covers the {f.get('region_label', 'procedure')} region.",

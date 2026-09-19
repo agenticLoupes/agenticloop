@@ -37,6 +37,7 @@ class Card(BaseModel):
     summary: str
     reason_shown: str
     evidence_ids: list[str]
+    image_url: Optional[str] = None  # set when the evidence is an imaging record (inline render)
 
 
 class InvestigationState(BaseModel):
@@ -53,5 +54,6 @@ class InvestigationState(BaseModel):
     final_cards: list[Card] = []
     dismissed_count: int = 0
     verify_count: int = 0
+    summary: str = ""  # safe-language recap of the investigation (no advice)
     status: str = "running"  # running | complete | error
     error: Optional[str] = None

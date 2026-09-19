@@ -13,6 +13,7 @@ export interface ResultCard {
   summary: string;
   reason_shown: string;
   evidence_ids: string[];
+  image_url?: string | null;
 }
 
 export interface InvestigationState {
@@ -26,6 +27,7 @@ export interface InvestigationState {
   skeptic_results: { decision: string; candidate: { title: string } }[];
   dismissed_count: number;
   verify_count: number;
+  summary?: string;
 }
 
 export interface TraceEvent {
@@ -98,3 +100,17 @@ export const getEvidence = (evidenceId: string) => {
 
 export const resetDemo = () =>
   request<unknown>("/demo/reset", { method: "POST" });
+
+export const uploadImaging = async (
+  patientId: string,
+  toothNumber: number | null,
+  file: File
+): Promise<{ record_id: string; image_url: string }> => {
+  const form = new FormData();
+  form.append("patient_id", patientId);
+  if (toothNumber != null) form.append("tooth_number", String(toothNumber));
+  form.append("file", file);
+  const res = await fetch(`${API_URL}/uploads/imaging`, { method: "POST", body: form });
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+};

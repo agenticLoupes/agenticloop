@@ -1,7 +1,9 @@
 """DentAssist Guardian API (§16). Model keys live server-side only (§14)."""
 from pathlib import Path
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+import uuid
+
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -82,6 +84,41 @@ def evidence(record_type: str, record_id: str):
     if not r:
         raise HTTPException(404, "record not found")
     return r.model_dump(mode="json")
+
+
+@app.post("/uploads/imaging")
+async def upload_imaging(
+    patient_id: str = Form(...),
+    tooth_number: int | None = Form(None),
+    file: UploadFile = File(...),
+):
+    """Attach a sample radiograph to a patient's record for this demo.
+
+    Uploads carry no authored ground-truth label, so read_imaging can only mark them
+    uncertain → the Skeptic lands on VERIFY. They can never SURFACE autonomously.
+    SAMPLE / SYNTHETIC IMAGES ONLY — never real patient data.
+    """
+    if get_record("patient", patient_id) is None:
+        raise HTTPException(404, "patient not found")
+    if file.content_type not in ("image/png", "image/jpeg"):
+        raise HTTPException(400, "png or jpeg only")
+    data = await file.read()
+    if len(data) > 5 * 1024 * 1024:
+        raise HTTPException(400, "file too large (5MB max)")
+    ext = "png" if file.content_type == "image/png" else "jpg"
+    rid = f"IMG-UP-{uuid.uuid4().hex[:6].upper()}"
+    dest = ASSETS / "uploads"
+    dest.mkdir(exist_ok=True)
+    (dest / f"{rid}.{ext}").write_bytes(data)
+    with get_conn() as c:
+        c.execute(
+            "insert into imaging_study (id, patient_id, tooth_number, region_label, image_url,"
+            " source_label, recorded_at) values (%s,%s,%s,NULL,%s,%s,now())",
+            (rid, patient_id, tooth_number, f"/assets/uploads/{rid}.{ext}",
+             "Uploaded sample image — unverified"),
+        )
+        c.commit()
+    return {"record_id": rid, "image_url": f"/assets/uploads/{rid}.{ext}"}
 
 
 @app.post("/demo/reset")

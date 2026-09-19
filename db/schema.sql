@@ -62,7 +62,7 @@ create table if not exists imaging_study (
     id           text primary key,             -- IMG-###
     patient_id   text not null references patient(id) on delete cascade,
     tooth_number int,
-    region_label text not null,                -- authored ground truth for the fail-safe gate
+    region_label text,                         -- authored ground truth (fail-safe gate); NULL for uploads → VERIFY-only
     image_url    text not null,
     source_label text,
     recorded_at  timestamptz,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { InvestigationState, TraceEvent } from "@/lib/api";
+import { API_URL, type InvestigationState, type TraceEvent } from "@/lib/api";
 
 export default function ResultCards({
   result,
@@ -51,6 +51,17 @@ export default function ResultCards({
         </div>
       )}
 
+      {result.summary && (
+        <div className="mt-4 rounded-lg border border-stone-200 bg-white p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
+            Investigation summary
+          </p>
+          <p className="mt-1.5 text-sm leading-relaxed text-stone-700">
+            {result.summary}
+          </p>
+        </div>
+      )}
+
       {trace && trace.length > 0 && (
         <div className="mt-4">
           <button
@@ -92,6 +103,14 @@ export default function ResultCards({
             <h3 className="mt-2.5 font-[family-name:var(--font-display)] text-lg font-medium text-stone-900">
               {card.title}
             </h3>
+            {card.image_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`${API_URL}${card.image_url}`}
+                alt="Synthetic radiograph — tap View source for the full record"
+                className="mt-2.5 w-full rounded-md border border-stone-200 bg-stone-900"
+              />
+            )}
             <p className="mt-1 text-sm leading-relaxed text-stone-600">
               {card.summary}
             </p>

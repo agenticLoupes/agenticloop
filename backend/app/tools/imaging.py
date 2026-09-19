@@ -74,7 +74,19 @@ def read_imaging(record_id: str, procedure: str, tooth_number: Optional[int] = N
         if "relevant:" in low:
             relevant = line.split(":", 1)[1].strip().lower()
 
-    truth = rec.data["region_label"]
+    truth = rec.data.get("region_label")
+    if not truth:
+        # uploaded image: no authored ground truth to validate against → can never SURFACE
+        # autonomously; it is always uncertain and requires the dentist's review (VERIFY).
+        return {
+            "evidence_id": record_id,
+            "region_reported": reported,
+            "region_label": None,
+            "region_match": False,
+            "relevant": relevant == "yes",
+            "uncertain": True,
+            "uploaded": True,
+        }
     # ground-truth gate: tooth number in the authored label must appear in the report (or vice versa)
     match = bool(reported) and any(
         tok in reported.lower() for tok in truth.lower().replace("—", " ").split() if tok.startswith("#")

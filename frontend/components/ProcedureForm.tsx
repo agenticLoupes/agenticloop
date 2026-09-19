@@ -110,11 +110,12 @@ export default function ProcedureForm({
   patientLabel: string;
   initialProcedure?: string;
   initialTooth?: number;
-  onSubmit: (procedure: string, toothNumber: number | null) => void;
+  onSubmit: (procedure: string, toothNumber: number | null, upload: File | null) => void;
   onBack: () => void;
 }) {
   const [procedure, setProcedure] = useState(initialProcedure ?? "extraction");
   const [tooth, setTooth] = useState(initialTooth ?? 30);
+  const [upload, setUpload] = useState<File | null>(null);
   const needsTooth = TOOTH_REQUIRED.has(procedure);
   const label = PROCEDURES.find((p) => p.value === procedure)?.label;
 
@@ -152,7 +153,7 @@ export default function ProcedureForm({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          onSubmit(procedure, needsTooth ? tooth : null);
+          onSubmit(procedure, needsTooth ? tooth : null, upload);
         }}
         className="space-y-5"
       >
@@ -193,6 +194,28 @@ export default function ProcedureForm({
             </div>
           </div>
         )}
+
+        <div>
+          <span className="mb-1 block text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
+            Attach radiograph — optional
+          </span>
+          <label className="flex cursor-pointer items-center justify-between rounded-md border border-dashed border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-600 hover:border-teal-600">
+            <span>{upload ? upload.name : "Upload a sample image (PNG/JPEG)"}</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-teal-800">
+              {upload ? "Change" : "Browse"}
+            </span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              className="hidden"
+              onChange={(e) => setUpload(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <p className="mt-1 text-[10px] leading-snug text-stone-400">
+            Sample/synthetic images only — never real patient data. Uploads have no
+            verified source, so they always require your review (never auto-surfaced).
+          </p>
+        </div>
 
         {/* selection summary — the intent in one sentence */}
         <p className="rounded-md bg-stone-100 px-3 py-2.5 text-center text-sm text-stone-700">

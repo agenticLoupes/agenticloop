@@ -40,6 +40,9 @@ def execute_run(run_id: str, ctx: dict) -> InvestigationState:
         state.final_cards = composer.compose(state.skeptic_results, trace)
         state.dismissed_count = sum(1 for r in state.skeptic_results if r.decision == "DISMISS")
         state.verify_count = sum(1 for r in state.skeptic_results if r.decision == "VERIFY")
+        tool_calls = sum(1 for e in trace.events
+                         if e["agent"] == "guardian" and e["event_type"] == "tool_call")
+        state.summary = composer.summarize(state, tool_calls)
         state.status = "complete"
     except Exception as e:  # fail safely: recoverable demo error, never invented results (§22)
         state.status = "error"

@@ -6,6 +6,7 @@ import {
   getTrace,
   resetDemo,
   startInvestigation,
+  uploadImaging,
   type InvestigationState,
   type Patient,
   type TraceEvent,
@@ -32,12 +33,20 @@ export default function Home() {
   const [evidenceId, setEvidenceId] = useState<string | null>(null);
 
   const investigate = useCallback(
-    async (patientId: string, procedure: string, toothNumber: number | null) => {
+    async (
+      patientId: string,
+      procedure: string,
+      toothNumber: number | null,
+      upload: File | null = null
+    ) => {
       setStep("investigating");
       setTrace(null);
       setResult(null);
       setRunComplete(false);
       try {
+        if (upload) {
+          await uploadImaging(patientId, toothNumber, upload);
+        }
         // POST returns run_id immediately; poll the live trace while the agent works
         const { run_id } = await startInvestigation({
           patient_id: patientId,
@@ -101,9 +110,9 @@ export default function Home() {
             initialProcedure={suggested?.procedure}
             initialTooth={suggested?.tooth ?? undefined}
             onBack={() => setStep("patient")}
-            onSubmit={(procedure, toothNumber) => {
+            onSubmit={(procedure, toothNumber, upload) => {
               setIntent({ procedure, tooth_number: toothNumber });
-              investigate(patient.id, procedure, toothNumber);
+              investigate(patient.id, procedure, toothNumber, upload);
             }}
           />
         )}
