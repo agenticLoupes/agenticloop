@@ -84,6 +84,48 @@ export const getRun = (runId: string) =>
 export const getTrace = (runId: string) =>
   request<TraceEvent[]>(`/investigations/${runId}/trace`);
 
+// --- Clinical Advisor: the dentist asks, the agent retrieves and cites ---
+
+export interface AdvisorCitation {
+  citation_id: string;
+  label: string;
+  url: string | null;
+}
+
+export interface AdvisorAnswer {
+  question: string;
+  question_focus: string;
+  patient_context: { finding: string; evidence_ids: string[] }[];
+  approaches: {
+    approach: string;
+    rationale: string;
+    patient_specific_considerations: string[];
+    citations: string[];
+  }[];
+  cautions: string[];
+  patient_communication: string;
+  urgent_referral: boolean;
+  citations: AdvisorCitation[];
+  unavailable_sources: string[];
+  notes: string;
+  trace: TraceEvent[];
+  status: "complete" | "error";
+  error: string | null;
+}
+
+export const askAdvisor = (body: {
+  question: string;
+  patient_id?: string | null;
+  procedure?: string | null;
+  tooth_number?: number | null;
+  history?: { role: string; content: string }[];
+}) =>
+  request<AdvisorAnswer>("/advisor/ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
 const RECORD_TYPE_BY_PREFIX: Record<string, string> = {
   MED: "medication",
   ALG: "allergy",

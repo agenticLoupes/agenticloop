@@ -15,10 +15,12 @@ dependencies = [
     "google-genai",
     "typesafe-sdk",
     "httpx",
+    "ddgs",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio"]
+local = ["langchain-ollama"]  # ADVISOR_PROVIDER=ollama (offline advisor development)
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

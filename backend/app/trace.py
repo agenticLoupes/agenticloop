@@ -6,8 +6,11 @@ from app.db import get_conn
 
 
 class Trace:
-    def __init__(self, run_id: str):
+    def __init__(self, run_id: str, persist: bool = True):
+        """persist=False keeps the trace in memory only — used by the Advisor, whose answers
+        are not investigation runs and so have no agent_event.run_id to reference."""
         self.run_id = run_id
+        self.persist = persist
         self.seq = 0
         self.events: list[dict] = []
         self._lock = threading.Lock()  # LangGraph executes parallel tool calls in threads
@@ -18,6 +21,8 @@ class Trace:
             ev = {"sequence_no": self.seq, "agent": agent, "event_type": event_type,
                   "summary": summary, "metadata": metadata or {}}
             self.events.append(ev)
+            if not self.persist:
+                return
             with get_conn() as c:
                 c.execute(
                     "insert into agent_event (run_id, sequence_no, agent, event_type, summary, metadata)"

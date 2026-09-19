@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from app.agents import advisor
 from app.case_chat import (
     CaseChatNotFound,
     CaseChatUnavailable,
@@ -31,6 +32,21 @@ class InvestigationRequest(BaseModel):
     patient_id: str
     procedure: str
     tooth_number: int | None = None
+
+
+class AdvisorTurn(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
+
+class AdvisorRequest(BaseModel):
+    """A question the dentist typed. Patient context is optional — without it the Advisor
+    answers from published evidence only and cites no patient record."""
+    question: str
+    patient_id: str | None = None
+    procedure: str | None = None
+    tooth_number: int | None = None
+    history: list[AdvisorTurn] = []
 
 
 @app.get("/health")
@@ -82,6 +98,31 @@ def get_trace(run_id: str):
             "select sequence_no, agent, event_type, summary from agent_event"
             " where run_id=%s order by sequence_no", (run_id,)).fetchall()
     return rows
+
+
+@app.post("/advisor/ask")
+def advisor_ask(req: AdvisorRequest):
+    """Answer a dentist's clinical question from this patient's records + published evidence.
+
+    Synchronous: the retrieval loop is a handful of calls, and the answer is only useful
+    whole. FastAPI runs this sync handler in a worker thread, so polling keeps working.
+    """
+    question = (req.question or "").strip()
+    if not question:
+        raise HTTPException(400, "question_required")
+    if len(question) > 2000:
+        raise HTTPException(400, "question too long (2000 chars max)")
+    if req.patient_id and get_record("patient", req.patient_id) is None:
+        raise HTTPException(404, "patient not found")
+
+    answer = advisor.ask(
+        question=question,
+        patient_id=req.patient_id,
+        procedure=req.procedure,
+        tooth_number=req.tooth_number,
+        history=[t.model_dump() for t in req.history[-10:]],  # bound the prompt
+    )
+    return answer.model_dump(mode="json")
 
 
 @app.get("/evidence/{record_type}/{record_id}")

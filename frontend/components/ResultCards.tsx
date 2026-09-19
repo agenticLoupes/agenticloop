@@ -9,11 +9,13 @@ export default function ResultCards({
   trace,
   onViewSource,
   onRestart,
+  advisor,
 }: {
   result: InvestigationState;
   trace: TraceEvent[] | null;
   onViewSource: (evidenceId: string) => void;
   onRestart: () => void;
+  advisor?: React.ReactNode;
 }) {
   const cards = result.final_cards ?? [];
   const [showTrace, setShowTrace] = useState(false);
@@ -146,6 +148,8 @@ export default function ResultCards({
       </div>
 
       {result.run_id && <CaseChat key={result.run_id} runId={result.run_id} />}
+
+      {advisor}
 
       <button
         onClick={onRestart}

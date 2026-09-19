@@ -19,6 +19,7 @@ import TraceView from "@/components/TraceView";
 import ResultCards from "@/components/ResultCards";
 import EvidenceModal from "@/components/EvidenceModal";
 import LiveTranscript from "@/components/LiveTranscript";
+import AdvisorPanel from "@/components/AdvisorPanel";
 
 const FOLLOW_POLL_MS = 2000;
 
@@ -209,6 +210,14 @@ export default function Home() {
             trace={trace}
             onViewSource={setEvidenceId}
             onRestart={restart}
+            advisor={
+              <AdvisorPanel
+                patientId={result.patient_id}
+                procedure={result.procedure}
+                toothNumber={result.tooth_number}
+                onViewSource={setEvidenceId}
+              />
+            }
           />
         )}
 
