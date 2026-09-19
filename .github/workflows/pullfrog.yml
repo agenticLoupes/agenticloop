@@ -1,0 +1,45 @@
+# PULLFROG ACTION — DO NOT EDIT EXCEPT WHERE INDICATED
+# Pullfrog dispatches this workflow from its GitHub App (PR review, @pullfrog
+# mentions on issues and PRs, console prompts). Review instructions and the
+# pullfrog-approval status check are repository settings in the Pullfrog
+# console, not YAML. The App must be installed on this repo by a repo admin.
+name: Pullfrog
+run-name: ${{ inputs.name || github.workflow }}
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        type: string
+        description: Agent prompt
+      name:
+        type: string
+        description: Run name
+      model:
+        type: string
+        description: Pullfrog model slug
+
+permissions:
+  contents: read
+
+jobs:
+  pullfrog:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Run agent
+        uses: pullfrog/pullfrog@v0
+        with:
+          prompt: ${{ inputs.prompt }}
+          model: ${{ inputs.model }}
+        env:
+          # With no key set Pullfrog uses its free default model. Add one of
+          # these as a repo secret (admin) to bill a specific provider.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

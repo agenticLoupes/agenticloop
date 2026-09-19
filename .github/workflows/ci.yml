@@ -1,0 +1,60 @@
+# CI for Agentic Loupes. Public repo, so GitHub-hosted runners are free.
+# Three checks that catch what actually breaks a hackathon merge:
+# the backend imports, the schema + seed load, and the frontend builds.
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r backend/requirements.txt
+      - name: Import every backend module
+        working-directory: backend
+        run: |
+          python -m compileall -q .
+          python -c "import schemas; print('schemas ok')"
+          python - <<'PY'
+          import importlib, pathlib
+          for p in pathlib.Path('.').rglob('*.py'):
+              mod = '.'.join(p.with_suffix('').parts)
+              if mod.endswith('__init__'): mod = mod[:-9]
+              if mod: importlib.import_module(mod)
+          print('all modules import')
+          PY
+      - name: Schema and seed load into SQLite
+        run: |
+          sqlite3 /tmp/loupes.db < db/schema.sql
+          sqlite3 /tmp/loupes.db < db/seed.sql
+          sqlite3 /tmp/loupes.db "select count(*) from patients" | grep -qx 1
+          sqlite3 /tmp/loupes.db "select periodontal_depth_mm from teeth where tooth='36'" | grep -qx 4
+          sqlite3 /tmp/loupes.db "select json_extract(allergies,'\$[0]') from patients" | grep -qx penicillin
+          echo "seed facts intact"
+      - name: Run tests if any exist
+        working-directory: backend
+        run: |
+          if ls test_*.py tests/ 2>/dev/null | grep -q .; then pip install pytest && pytest -q; else echo "no tests yet"; fi
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - working-directory: frontend
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          bun run build
