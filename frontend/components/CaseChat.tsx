@@ -82,7 +82,7 @@ export default function CaseChat({ runId }: { runId: string }) {
       setTurns([...next, { role: "assistant", content: answer }]);
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
-      setError("Briefing unavailable — the review itself is unaffected. Try again.");
+      setError("Couldn't answer that just now — the review above is unaffected. Try again.");
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -107,7 +107,7 @@ export default function CaseChat({ runId }: { runId: string }) {
     };
     rec.onerror = () => {
       setListening(false);
-      setError("Microphone unavailable. Type the question instead.");
+      setError("We couldn't reach your microphone. Type the question instead.");
     };
     rec.onend = () => setListening(false);
     recRef.current = rec;
@@ -124,12 +124,12 @@ export default function CaseChat({ runId }: { runId: string }) {
   };
 
   return (
-    <section className="mt-8 rounded-lg border border-stone-200 bg-white">
+    <section className="mt-8 rounded-xl border border-stone-200 bg-white shadow-sm">
       <div className="border-b border-stone-100 px-4 py-3">
-        <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold uppercase tracking-tight text-stone-900">
+        <h3 className="text-lg font-semibold text-stone-900">
           Ask about this case
         </h3>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500">
+        <p className="mt-1 text-sm leading-relaxed text-stone-600">
           Chat or speak to review what is on file and what Guardian found. Explains
           the record — never tells you what treatment to do.
           {voiceOk && (
@@ -146,7 +146,7 @@ export default function CaseChat({ runId }: { runId: string }) {
               type="button"
               disabled={busy}
               onClick={() => send(q)}
-              className="min-h-11 rounded-md border border-stone-200 px-2.5 py-1.5 text-left text-[11px] leading-snug text-stone-600 hover:border-teal-600 hover:text-teal-800 disabled:opacity-40"
+              className="min-h-11 rounded-lg border border-stone-300 px-3 py-2 text-left text-sm leading-snug text-stone-700 hover:border-teal-600 hover:bg-teal-50 hover:text-teal-800 disabled:opacity-40"
             >
               {q}
             </button>
@@ -167,8 +167,8 @@ export default function CaseChat({ runId }: { runId: string }) {
             key={`${t.role}-${i}-${t.content.slice(0, 24)}`}
             className={t.role === "dentist" ? "ml-6 text-right" : "mr-6"}
           >
-            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-stone-400">
-              {t.role === "dentist" ? "You" : "Case briefing"}
+            <p className="text-xs font-medium text-stone-500">
+              {t.role === "dentist" ? "You" : "Guardian"}
             </p>
             <p
               className={`mt-0.5 inline-block rounded-md px-3 py-2 text-left text-sm leading-relaxed ${
@@ -183,7 +183,7 @@ export default function CaseChat({ runId }: { runId: string }) {
               <button
                 type="button"
                 onClick={() => speak(t.content)}
-                className="mt-1 block text-[10px] font-medium uppercase tracking-[0.15em] text-teal-800 hover:underline"
+                className="mt-1 block text-sm font-medium text-teal-800 underline underline-offset-2 hover:text-teal-700"
               >
                 Listen
               </button>
@@ -191,10 +191,10 @@ export default function CaseChat({ runId }: { runId: string }) {
           </div>
         ))}
         {busy && (
-          <p className="font-mono text-xs text-stone-400">Reviewing this case…</p>
+          <p className="animate-pulse text-sm text-stone-500">Looking through the case…</p>
         )}
         {error && (
-          <p role="alert" className="text-xs text-stone-500">
+          <p role="alert" className="text-sm text-stone-600">
             {error}
           </p>
         )}
@@ -213,11 +213,11 @@ export default function CaseChat({ runId }: { runId: string }) {
         <textarea
           id="case-chat-input"
           name="case-question"
-          rows={2}
+          rows={3}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Ask about medications, notes, transcripts, or why a record was shown…"
-          className="min-h-[44px] flex-1 resize-none rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 placeholder:text-stone-400 focus:border-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-800"
+          placeholder="e.g. Why was this record shown?"
+          className="min-h-[56px] flex-1 resize-none rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-[15px] leading-snug text-stone-900 placeholder:text-stone-500 focus:border-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-800"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -231,7 +231,7 @@ export default function CaseChat({ runId }: { runId: string }) {
             onClick={toggleListen}
             aria-pressed={listening}
             aria-label={listening ? "Stop listening" : "Speak a question"}
-            className={`h-11 w-11 shrink-0 rounded-md border text-sm ${
+            className={`h-11 w-11 shrink-0 rounded-lg border text-sm ${
               listening
                 ? "border-amber-400 bg-amber-50 text-amber-800"
                 : "border-stone-300 text-stone-600 hover:border-teal-700 hover:text-teal-800"
@@ -259,7 +259,7 @@ export default function CaseChat({ runId }: { runId: string }) {
         <button
           type="submit"
           disabled={busy || !draft.trim()}
-          className="h-11 shrink-0 rounded-md bg-teal-800 px-3 text-[11px] font-semibold uppercase tracking-wider text-white hover:bg-teal-700 disabled:opacity-40"
+          className="h-11 shrink-0 rounded-lg bg-teal-800 px-4 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-40"
         >
           Ask
         </button>
