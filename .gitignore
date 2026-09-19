@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# added 2026-09-19
+node_modules/
+.venv/
+loupes.db
+loupes.db-*
+frontend/.env
