@@ -95,14 +95,15 @@ def investigate(context: dict, trace: Trace, max_steps: int = 12) -> list[Candid
         if f.get("uploaded"):
             # uploaded image: no ground truth → always a candidate, and its uncertainty is
             # stated so the Skeptic lands on VERIFY (the dentist must review it).
+            region = f.get("region_reported") or "could not be established"
             candidates.append(Candidate(
                 title="Uploaded imaging for this case",
-                summary=(f"An uploaded image ({eid}) was reviewed; reported region: "
-                         f"{f.get('region_reported') or 'not established'}. It has no verified "
-                         "source label, so its relevance cannot be established automatically."),
+                summary=(f"Vision located this image as: {region}. Uploaded images are never "
+                         "auto-trusted — there is no verified source label to validate against, "
+                         "so it is presented for your confirmation rather than auto-surfaced."),
                 record_type="imaging",
                 evidence_ids=[eid],
-                reason="Uploaded during pre-procedure review; requires the dentist's own review.",
+                reason="Uploaded during pre-procedure review; the dentist confirms its relevance.",
             ))
             covered.add(eid)
         elif f.get("relevant") and f.get("region_match"):
