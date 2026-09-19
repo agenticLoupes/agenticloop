@@ -94,6 +94,14 @@ export default function Home() {
       </header>
 
       <div className="flex-1">
+        {(step === "results" || step === "error") && (
+          <button
+            onClick={restart}
+            className="mb-4 text-xs uppercase tracking-wider text-stone-500 hover:text-stone-800"
+          >
+            ← All patients
+          </button>
+        )}
         {step === "patient" && (
           <PatientSelect
             onSelect={(p, s) => {

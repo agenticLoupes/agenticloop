@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { API_URL, type InvestigationState, type TraceEvent } from "@/lib/api";
+import CaseChat from "@/components/CaseChat";
 
 export default function ResultCards({
   result,
@@ -104,12 +105,19 @@ export default function ResultCards({
               {card.title}
             </h3>
             {card.image_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={`${API_URL}${card.image_url}`}
-                alt="Synthetic radiograph — tap View source for the full record"
-                className="mt-2.5 w-full rounded-md border border-stone-200 bg-stone-900"
-              />
+              <figure className="mt-2.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`${API_URL}${card.image_url}`}
+                  alt={card.image_caption ?? "Synthetic radiograph"}
+                  className="w-full rounded-md border border-stone-200 bg-stone-900"
+                />
+                {card.image_caption && (
+                  <figcaption className="mt-1.5 text-xs italic leading-snug text-stone-500">
+                    {card.image_caption}
+                  </figcaption>
+                )}
+              </figure>
             )}
             <p className="mt-1 text-sm leading-relaxed text-stone-600">
               {card.summary}
@@ -136,6 +144,8 @@ export default function ResultCards({
           </article>
         ))}
       </div>
+
+      {result.run_id && <CaseChat key={result.run_id} runId={result.run_id} />}
 
       <button
         onClick={onRestart}

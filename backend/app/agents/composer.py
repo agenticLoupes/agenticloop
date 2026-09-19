@@ -13,13 +13,16 @@ def compose(results: list[SkepticResult], trace: Trace) -> list[Card]:
             continue
         if not r.candidate.evidence_ids:  # NO EVIDENCE ID -> NO FACTUAL CARD (§12)
             continue
-        # imaging evidence renders inline on the card
+        # imaging evidence renders inline on the card, with its authored description
         image_url = None
+        image_caption = None
         for eid in r.candidate.evidence_ids:
             if eid.startswith("IMG"):
                 rec = get_record("imaging", eid)
                 if rec:
                     image_url = rec.data.get("image_url")
+                    meta = rec.data.get("metadata") or {}
+                    image_caption = meta.get("description")
                 break
         cards.append(Card(
             decision=r.decision,
@@ -28,6 +31,7 @@ def compose(results: list[SkepticResult], trace: Trace) -> list[Card]:
             reason_shown=r.candidate.reason or "Selected during pre-procedure record review.",
             evidence_ids=r.candidate.evidence_ids,
             image_url=image_url,
+            image_caption=image_caption,
         ))
     trace.add("composer", "cards", f"Prepared {len(cards)} evidence-backed card(s)")
     return cards

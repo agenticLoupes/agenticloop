@@ -8,6 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from app.case_chat import (
+    CaseChatNotFound,
+    CaseChatUnavailable,
+    EmptyQuestion,
+    answer_case_question,
+)
 from app.db import get_conn
 from app.graph import execute_run, start_run
 from app.tools.records import TYPE_CONFIG, get_record
@@ -84,6 +90,33 @@ def evidence(record_type: str, record_id: str):
     if not r:
         raise HTTPException(404, "record not found")
     return r.model_dump(mode="json")
+
+
+class ChatTurn(BaseModel):
+    role: str
+    content: str
+
+
+class AskRequest(BaseModel):
+    question: str
+    history: list[ChatTurn] = []
+
+
+@app.post("/investigations/{run_id}/ask")
+def ask_about_review(run_id: str, req: AskRequest):
+    """Case briefing Q&A for this run — every patient. Explains the record, never advises."""
+    try:
+        return answer_case_question(
+            run_id,
+            req.question,
+            [t.model_dump() for t in req.history],
+        )
+    except CaseChatNotFound:
+        raise HTTPException(404, "run not found or incomplete")
+    except EmptyQuestion:
+        raise HTTPException(400, "question required")
+    except CaseChatUnavailable:
+        raise HTTPException(503, "explainer unavailable — the review itself is unaffected")
 
 
 @app.post("/uploads/imaging")

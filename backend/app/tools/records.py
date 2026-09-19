@@ -107,6 +107,15 @@ def get_medical_conditions(patient_id: str, status: Optional[str] = None) -> lis
     return [_to_record(r, "medical_condition") for r in rows]
 
 
+def get_clinical_notes(patient_id: str) -> list[Record]:
+    with get_conn() as c:
+        rows = c.execute(
+            "select * from clinical_note where patient_id = %s order by note_date desc nulls last",
+            (patient_id,),
+        ).fetchall()
+    return [_to_record(r, "clinical_note") for r in rows]
+
+
 def search_clinical_notes(patient_id: str, query: str, from_date=None, to_date=None) -> list[Record]:
     # ponytail: naive ILIKE search; swap for FTS if recall matters
     sql = "select * from clinical_note where patient_id = %s and summary ilike %s"
