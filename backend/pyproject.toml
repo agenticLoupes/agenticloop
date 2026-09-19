@@ -1,0 +1,22 @@
+[project]
+name = "dentassist-backend"
+version = "0.1.0"
+description = "DentAssist Guardian backend — pre-procedure record-review agent"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "pydantic-settings",
+    "psycopg[binary]",
+    "langgraph",
+    "langchain-google-genai",
+    "typesafe-sdk",
+    "httpx",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
