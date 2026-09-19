@@ -19,7 +19,7 @@ Total runtime target: 2:50. Hard cap 3:00.
 
 ## 0:00–0:15 — Who we are
 
-Screen: patient list, header reading "DentAssist Guardian. Before you begin, let the record challenge the plan." Footer reads "Synthetic data — prototype".
+Screen: patient list, header reading "DentAssist Guardian. A second pair of eyes on the chart before you start." Step bar shows Patient, Procedure, Review. Footer reads "Synthetic data — prototype". (Labels here match main after #37; on older builds the button reads "Challenge procedure".)
 
 > "We're DentAssist Guardian, Agents Track. Dental records hold a lot, but the system waits for the dentist to go looking. Guardian starts from what the dentist is about to do and investigates the record first."
 
@@ -31,7 +31,7 @@ Screen: patient list, header reading "DentAssist Guardian. Before you begin, let
 
 ## 0:30–1:15 — Beat 1: the positive case
 
-Patient: **DEMO-014** (tag ALLERGY, hint "Documented lidocaine reaction + diabetes").
+Patient: **DEMO-014** (tag "Allergy", hint "Documented lidocaine reaction + diabetes").
 
 Tap DEMO-014. The procedure form pre-fills:
 
@@ -40,7 +40,7 @@ Procedure: filling
 Tooth: 12
 ```
 
-Press **Challenge procedure**.
+Press **Check the record**.
 
 > "I'm about to place a filling on tooth twelve. Watch the trace."
 
@@ -48,28 +48,28 @@ Screen: TraceView. Point at the steps as they appear: context interpreter, Guard
 
 > "Guardian is calling deterministic record tools, meds, allergies, notes, imaging. It proposes candidates. The Skeptic argues against each one. Only survivors become cards."
 
-Expected result in about 10 s: three "Record to review" cards. Lidocaine reaction, Type 2 diabetes, active Metformin. Tap **View source** on the Lidocaine card.
+Expected result in 10 to 16 s: three cards badged **"Please review"**. Documented Allergy to Lidocaine, Active Medication: Metformin, Active Medical Condition: Type 2 diabetes. Tap **View source** on the Lidocaine card.
 
 > "Every card links to the exact record. A documented lidocaine reaction, before I pick an anesthetic. No hallucinated summaries. The source is one tap away."
 
 ## 1:15–1:50 — Beat 2: the honest case
 
-Press "← All patients". Tap **DEMO-009** (tag VERIFY, hint "A note mentions a medication change; current status unknown").
+Press "← Back to all patients". Tap **DEMO-009** (tag "Needs checking", hint "A note mentions a medication change; current status unknown").
 
 ```text
 Procedure: extraction
 Tooth: 19
 ```
 
-Press **Challenge procedure**.
+Press **Check the record**.
 
 > "Extraction, tooth nineteen. This one shows the part we're proudest of."
 
-Expected in about 10 s: one "Record to review" card (the tooth 19 radiograph) and one **"Item to verify"** card on the clinical note.
+Expected in 10 to 17 s: a **"Worth verifying"** card on the clinical note (Blood-Thinning Medication Mention) and a second card on the tooth 19 radiograph. In rehearsal the radiograph came back as "Worth verifying" once and "Please review" once, so only speak to the note card.
 
 > "A note says the patient's blood thinner changed. There is no medication row that confirms it. Guardian doesn't guess. It says: verify this before you start. The product isn't trying to maximize alerts. Its job is to decide what deserves the dentist's attention and what doesn't."
 
-Backup if DEMO-009 misbehaves: **DEMO-012**, root_canal, tooth 9. Two "Record to review" cards (latex allergy plus matching intake condition), about 9 s. Say the latex line instead.
+Backup if DEMO-009 misbehaves: **DEMO-012** (tag "Allergy"), root_canal, tooth 9. Two "Please review" cards (Latex Allergy Record plus Latex Sensitivity Medical Condition). It ran 9 s in the sweep and 39 s in rehearsal, so only use it if DEMO-009 fails outright. Say the latex line instead.
 
 ## 1:50–2:15 — Beat 3: hands-free (optional, cut if over time)
 
@@ -121,9 +121,12 @@ Screen: patient list, header visible.
 
 ## Timing sheet (fill in during rehearsal)
 
+Rehearsal 1 was run 6:20 PM CDT through the verify harness against main `971f099`
+(wall time includes polling; on screen it reads a few seconds faster).
+
 | Beat | Patient | Rehearsal 1 (s) | Rehearsal 2 (s) | Notes |
 |---|---|---|---|---|
-| 1 | DEMO-014 filling #12 | | | |
-| 2 | DEMO-009 extraction #19 | | | |
-| 2b backup | DEMO-012 root_canal #9 | | | |
-| 3 | /live DEMO-014 | | | |
+| 1 | DEMO-014 filling #12 | 16 | | 3 cards: ALG-014, MED-014, COND-014. Clean. |
+| 2 | DEMO-009 extraction #19 | 17 | | NOTE-009 verify card present. IMG-003 also came back as verify. |
+| 2b backup | DEMO-012 root_canal #9 | 39 | | Correct cards (ALG-012, COND-012) but slow this run. |
+| 3 | /live DEMO-014 | | | Not rehearsed by the harness; needs the phone. |
