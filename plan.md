@@ -1,5 +1,24 @@
 # Agentic Loupes — Build Plan
 
+> ## REVISION 2026-09-19 14:45 CDT — read this block first, it overrides the sections below where they conflict
+>
+> Clock: 7:00 PM deadline, ~2 hours of build time left before README/rehearsal/video/submission. The plan below was sized for a full day. These cuts make it fit. Track choice, the autonomous flag (§1), the scoring map (§2), the demo script (§11), and the graded README (§8) are unchanged.
+>
+> | Was | Now | Why |
+> |---|---|---|
+> | `gpt-live-1` full-duplex audio + client delegation | **Browser speech.** Web Speech API for the transcript, wake regex in the browser, `speechSynthesis` for the reply. No audio crosses the network. | Removes a 9-day-old API, WebRTC, and the audio-format sink the plan itself budgets 2 hours for. Judges score memory / tools / autonomy, not the voice socket. |
+> | Duplex WebSocket (§7.1) | **Three HTTP calls:** `POST /frame`, `POST /turn`, `GET /flags` polled every 2s. Contract frozen in `backend/schemas.py` and `frontend/src/api.js`. | Simpler to build and mock in parallel. The unprompted flag still appears with no query. |
+> | Roboflow `teeth-detection-and-numbering-agi2i/18` as numbering source of truth | **`gpt-5.6-terra` vision does detection + FDI numbering**, returning normalized boxes. Roboflow demoted to a stretch ticket behind a smoke test. | Verified 14:35: that model lives in workspace `prime-snf1v`, has 33 classes (`tooth` + all 32 FDI), and is cited as a **panoramic radiograph** dataset. An X-ray model will not number teeth in a cleaning video. |
+> | Supabase | **SQLite** (`loupes.db`, `db/schema.sql` + `db/seed.sql`, verified loading 14:50). Same persistence story across sessions. | Zero project setup, zero keys, zero network risk. Postgres swap is two lines, noted in schema.sql. |
+> | LangGraph reconcile | Plain Python, four checks. | The plan already time-boxed this to 45 min; there are no minutes to spend on scaffolding. |
+> | MedGemma / Featherless / `find_similar_cases` | **Cut.** MedGemma stays in the write-up as the open medical model evaluated and why it is text-only. | First on the plan's own cut list. Cold start risk for zero rubric points. |
+> | Tooth ids `FDI_19` | **FDI two-digit as text: `'36'`.** Demo tooth is FDI 36 = universal #19. The dentist says "nineteen" on camera; the backend maps universal→FDI. | One convention everywhere: schema, boxes, flags. |
+>
+> Models still in play: `gpt-5.6-terra` (Responses API, vision + tools). One key: `OPENAI_API_KEY`.
+>
+> Work is split into GitHub issues labeled `A-backend`, `B-frontend`, `C-data-docs`, `D-domain-demo`. One branch per ticket, PR to `main`, squash-merge. Code freeze **4:45 PM**.
+
+
 AI assistant for dentists. Sees what the dentist sees through their loupes, hears the room, answers on a wake word with patient-specific context, and remembers what it found.
 
 **Demo promise:** dentist says *"Hey Loupes, what's the history on this tooth?"* → identifies the tooth by number from the camera, pulls that tooth's record, answers out loud in under 3 seconds, circles it on screen — **and writes the finding back so it knows it later.**

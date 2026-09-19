@@ -11,6 +11,18 @@ remembers what it found.
 ## Quick start
 <!-- exact copy-pasteable commands. plan.md §12 -->
 
+```bash
+git clone https://github.com/Rishabh-Pagaria/agenticloop.git && cd agenticloop
+cp .env.example .env          # add OPENAI_API_KEY
+
+cd backend && python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt && uvicorn main:app --reload --port 8000
+# first start creates ./loupes.db from ../db/schema.sql + ../db/seed.sql
+
+cd ../frontend && bun install && bun run dev -- --host
+# open the printed URL in Chrome (Web Speech API); allow camera + mic
+```
+
 ## Tech stack & architecture
 <!-- paste the ASCII diagram from plan.md §4. Simple is fine. -->
 

@@ -1,10 +1,10 @@
-"""TOOL_DECLARATIONS for the Gemini Live config.  [OWNER: A]
+"""TOOL_DECLARATIONS for gpt-5.6-terra (Responses API function tools). [OWNER: A]
 
-Four tools, all sync, all returning JSON-serializable dicts (plan.md §7.2).
-A stubs every one with a hardcoded return in minute one and is never blocked
-on B.
+Three tools, all sync, all returning JSON-serializable dicts (schemas.py).
+    detect_teeth()                      -> {"boxes": [Box]}      reads latest frame from session state
+    get_tooth_record(tooth, patient_id) -> ToothRecord
+    log_finding(tooth, observation, source, confidence) -> {"id": int}   called autonomously
 
-TODO:
-  - TOOL_DECLARATIONS = [...]  # Gemini function-declaration JSON
-  - dispatch(name, args) -> dict
+dispatch(name, args, session) is async and runs each sync tool via asyncio.to_thread.
+A stubs all three with hardcoded returns first, then wires the real ones.
 """

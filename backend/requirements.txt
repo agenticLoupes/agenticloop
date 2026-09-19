@@ -1,9 +1,6 @@
-# pin at integration, not now
 fastapi
 uvicorn[standard]
-websockets
+pydantic>=2
 python-dotenv
+openai>=1.50
 httpx
-supabase
-langgraph
-langchain-openai

@@ -1,6 +1,8 @@
-"""Roboflow smoke test.  [OWNER: A]  Run at T+0:15, not at hour four.
+"""Roboflow smoke test. STRETCH. Feed a real frame from the demo video.
 
-Feed a REAL frame from the demo video and check the FDI numbering. If the
-numbering is wrong, fall back now to generic detection + the dentist speaking
-the tooth number (plan.md §13).
+    ROBOFLOW_API_KEY=... python scripts/smoke_test_roboflow.py frame.jpg
+
+Prints every prediction with class and confidence. If the classes are wrong
+or empty on intraoral footage (expected: the model is panoramic-X-ray trained),
+leave detect_teeth on the Terra vision path.
 """
