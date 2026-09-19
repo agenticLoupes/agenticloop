@@ -9,3 +9,4 @@ def test_settings_reads_env(monkeypatch):
     s = get_settings()
     assert s.supabase_db_url == "postgresql://x"
     assert s.gemini_model == "gemini-2.5-flash"  # default
+    get_settings.cache_clear()  # don't leak the fake url into later tests' cached settings

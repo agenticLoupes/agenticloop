@@ -16,6 +16,13 @@ outcome is what the Guardian + Skeptic (Jev) should produce.
 only) is validated against it: agreement + relevance → eligible to SURFACE; disagreement/uncertainty
 → VERIFY/DISMISS. A vision hallucination can never produce a false SURFACE.
 
-## Transcript scenario (added by the transcript sub-agent — Task 1.6c)
-A patient will get a `conversation_transcript` where the patient reports stopping an anticoagulant
-while a medication row still reads "active" → contradiction → SURFACE/VERIFY via transcript evidence.
+## Transcript scenario (Task 1.6c)
+
+| Patient | Evidence | Note |
+|---|---|---|
+| **DEMO-007** | `CONV-007` (transcript) vs `MED-018` (active Warfarin) | Prior-visit transcript: patient reports they **stopped taking Warfarin** a few weeks ago, but `MED-018` still reads `active` → **contradiction** → drives SURFACE/VERIFY via transcript evidence. Key demo case. |
+| **DEMO-016** | `CONV-016` (transcript) | Benign routine check-in, no complaints, no contradiction → search returns non-alarming results too. |
+
+`conversation_transcript` rows are authored via `db/seed_conversations.sql` (idempotent) and read only
+by `search_conversations` (ILIKE over `transcript_text` + `summary`). Transcripts describe what was said —
+no diagnosis, no treatment advice.
