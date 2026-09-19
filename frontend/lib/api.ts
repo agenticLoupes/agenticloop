@@ -1,5 +1,5 @@
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Same-origin by default: next.config.ts proxies /api/* to FastAPI (works through a tunnel).
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 export interface Patient {
   id: string;
@@ -145,3 +145,44 @@ export const uploadImaging = async (
   if (!res.ok) throw new Error(`${res.status}`);
   return res.json();
 };
+
+// ---- live voice (phone /live route) ----------------------------------------
+
+// One-use ephemeral token; the real GOOGLE_API_KEY never leaves the backend.
+export interface LiveToken {
+  token: string;
+  model: string;
+  api_version: string;
+}
+
+export const getLiveToken = () =>
+  request<LiveToken>("/live/token", { method: "POST" });
+
+// Newest run from any device — lets the laptop follow runs started by voice on the phone.
+export interface LatestRun {
+  id: string;
+  patient_id: string;
+  procedure: string;
+  tooth_number: number | null;
+  status: "running" | "complete" | "error";
+  started_at: string;
+}
+
+export const getLatestRun = () => request<LatestRun | null>("/live/latest-run");
+
+export interface TranscriptLine {
+  id: number;
+  role: "dentist" | "assistant" | "system";
+  text: string;
+  at: string;
+}
+
+export const getTranscript = (since: number) =>
+  request<TranscriptLine[]>(`/live/transcript?since=${since}`);
+
+export const postTranscript = (role: TranscriptLine["role"], text: string) =>
+  request<{ id: number | null }>("/live/transcript", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role, text }),
+  });

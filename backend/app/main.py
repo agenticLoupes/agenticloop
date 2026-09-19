@@ -16,10 +16,12 @@ from app.case_chat import (
 )
 from app.db import get_conn
 from app.graph import execute_run, start_run
+from app.live import router as live_router
 from app.tools.records import TYPE_CONFIG, get_record
 
 app = FastAPI(title="DentAssist Guardian", description="SYNTHETIC DATA — PROTOTYPE")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.include_router(live_router)
 
 ASSETS = Path(__file__).resolve().parents[2] / "db" / "assets"
 app.mount("/assets", StaticFiles(directory=ASSETS), name="assets")
