@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  getLatestRun,
+  getPatients,
   getRun,
   getTrace,
   resetDemo,
@@ -16,6 +18,9 @@ import ProcedureForm from "@/components/ProcedureForm";
 import TraceView from "@/components/TraceView";
 import ResultCards from "@/components/ResultCards";
 import EvidenceModal from "@/components/EvidenceModal";
+import LiveTranscript from "@/components/LiveTranscript";
+
+const FOLLOW_POLL_MS = 2000;
 
 type Step = "patient" | "procedure" | "investigating" | "results" | "error";
 
@@ -77,6 +82,37 @@ export default function Home() {
   const [trace, setTrace] = useState<TraceEvent[] | null>(null);
   const [runComplete, setRunComplete] = useState(false);
   const [evidenceId, setEvidenceId] = useState<string | null>(null);
+  const activeRun = useRef<string | null>(null); // the run this screen is showing
+  const seenRun = useRef<string | null | undefined>(undefined); // newest run id already handled
+  const starting = useRef(false); // a local POST is in flight
+
+  // Poll one run's trace + status until it finishes. Stops if another run takes over.
+  const followRun = useCallback(async (runId: string) => {
+    activeRun.current = runId;
+    setStep("investigating");
+    setTrace(null);
+    setResult(null);
+    setRunComplete(false);
+    try {
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (activeRun.current !== runId) return;
+        const [tr, run] = await Promise.all([getTrace(runId), getRun(runId)]);
+        if (activeRun.current !== runId) return;
+        setTrace(tr);
+        if (run.status === "complete" && run.result) {
+          setResult(run.result);
+          setRunComplete(true);
+          return;
+        }
+        if (run.status === "error") {
+          throw new Error(run.result?.error ?? "run failed");
+        }
+      }
+    } catch {
+      if (activeRun.current === runId) setStep("error");
+    }
+  }, []);
 
   const investigate = useCallback(
     async (
@@ -89,6 +125,7 @@ export default function Home() {
       setTrace(null);
       setResult(null);
       setRunComplete(false);
+      starting.current = true;
       try {
         if (upload) {
           await uploadImaging(patientId, toothNumber, upload);
@@ -99,27 +136,58 @@ export default function Home() {
           procedure,
           tooth_number: toothNumber,
         });
-        for (;;) {
-          await new Promise((r) => setTimeout(r, 1500));
-          const [tr, run] = await Promise.all([getTrace(run_id), getRun(run_id)]);
-          setTrace(tr);
-          if (run.status === "complete" && run.result) {
-            setResult(run.result);
-            setRunComplete(true);
-            return;
-          }
-          if (run.status === "error") {
-            throw new Error(run.result?.error ?? "run failed");
-          }
-        }
+        seenRun.current = run_id;
+        void followRun(run_id);
       } catch {
         setStep("error");
+      } finally {
+        starting.current = false;
       }
     },
-    []
+    [followRun]
   );
 
+  // Follow runs started elsewhere — the phone's voice session (/live) — so this screen
+  // shows their trace and cards. Runs that existed before the page loaded are ignored.
+  useEffect(() => {
+    let alive = true;
+    let patients: Patient[] = [];
+    getPatients().then((ps) => (patients = ps), () => {});
+    const tick = async () => {
+      if (starting.current) return;
+      try {
+        const latest = await getLatestRun();
+        if (!alive) return;
+        const id = latest?.id ?? null;
+        if (seenRun.current === undefined) {
+          seenRun.current = id; // baseline on first poll
+          return;
+        }
+        if (!latest || id === seenRun.current || id === activeRun.current) return;
+        seenRun.current = id;
+        setPatient(
+          patients.find((p) => p.id === latest.patient_id) ?? {
+            id: latest.patient_id,
+            demo_identifier: latest.patient_id,
+            display_name: "",
+          }
+        );
+        setIntent({ procedure: latest.procedure, tooth_number: latest.tooth_number });
+        void followRun(latest.id);
+      } catch {
+        /* backend briefly unavailable; next tick retries */
+      }
+    };
+    void tick();
+    const t = setInterval(tick, FOLLOW_POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [followRun]);
+
   const restart = () => {
+    activeRun.current = null;
     setStep("patient");
     setPatient(null);
     setIntent(null);
@@ -139,6 +207,7 @@ export default function Home() {
       </header>
 
       <Stepper current={STEP_INDEX[step]} />
+      <LiveTranscript />
 
       <div className="flex-1">
         {(step === "results" || step === "error") && (
