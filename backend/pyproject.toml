@@ -13,6 +13,7 @@ dependencies = [
     "langchain-google-genai",
     "typesafe-sdk",
     "httpx",
+    "python-multipart",
 ]
 
 [project.optional-dependencies]
