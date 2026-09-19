@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { API_URL, getPatients, type Patient } from "@/lib/api";
+import { getPatients, type Patient } from "@/lib/api";
 
 // What each authored scenario demonstrates (db/scenarios.md) — so testers know where to look.
 // suggested = the procedure+tooth that exercises the scenario; pre-filled on selection.
@@ -67,6 +67,14 @@ function TagIcon({ tag }: { tag: string }) {
           <line x1="4.5" y1="4.5" x2="19.5" y2="19.5" />
         </svg>
       );
+    case "IMAGING": // radiograph film: frame + tooth silhouettes
+      return (
+        <svg viewBox="0 0 24 24" className={cls} {...stroke}>
+          <rect x="3.5" y="5" width="17" height="14" rx="2" />
+          <path d="M7 12 v-1.5 a1.6 1.6 0 0 1 3.2 0 V12 M7.4 12 l0.8 3.4 M9.4 12 l-0.8 3.4" />
+          <path d="M13.8 12 v-1.5 a1.6 1.6 0 0 1 3.2 0 V12 M14.2 12 l0.8 3.4 M16.2 12 l-0.8 3.4" />
+        </svg>
+      );
     default: // record dot
       return (
         <svg viewBox="0 0 24 24" className={cls} {...stroke}>
@@ -130,22 +138,17 @@ export default function PatientSelect({
                     onClick={() => onSelect(p, s?.suggested)}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-teal-50/60 focus-visible:bg-teal-50/60 focus-visible:outline-none"
                   >
-                    {s?.thumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={`${API_URL}${s.thumb}`}
-                        alt=""
-                        aria-hidden
-                        className="h-11 w-11 shrink-0 rounded-md border border-stone-200 bg-stone-900 object-cover"
-                      />
-                    ) : (
-                      <span
-                        aria-hidden
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-stone-200 bg-stone-50 text-stone-400"
-                      >
-                        <TagIcon tag={s?.tag ?? ""} />
-                      </span>
-                    )}
+                    <span
+                      aria-hidden
+                      className={
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-md border " +
+                        (s?.thumb
+                          ? "border-teal-200 bg-teal-50 text-teal-700" // film on file
+                          : "border-stone-200 bg-stone-50 text-stone-400")
+                      }
+                    >
+                      <TagIcon tag={s?.thumb ? "IMAGING" : s?.tag ?? ""} />
+                    </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span className="font-mono text-sm font-medium text-stone-800">
