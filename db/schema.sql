@@ -1,0 +1,10 @@
+-- [OWNER: B]  Paste the DDL from plan.md §5 verbatim, run in the Supabase
+-- SQL editor at T+0:00. Two minutes.
+--
+-- Tables: patients, teeth, session_findings *, cases
+-- Then: enable row level security on all four (demo only -- backend uses the
+-- service key, the browser never touches these tables).
+--
+-- * session_findings is the memory. Do not rename it; reconcile.py reads it.
+--
+-- `teeth.tooth` must match the Roboflow class labels EXACTLY.

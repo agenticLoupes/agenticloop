@@ -1,0 +1,9 @@
+# pin at integration, not now
+fastapi
+uvicorn[standard]
+websockets
+python-dotenv
+httpx
+supabase
+langgraph
+langchain-openai

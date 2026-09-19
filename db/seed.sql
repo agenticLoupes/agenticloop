@@ -1,0 +1,7 @@
+-- [OWNER: B]  One patient, 4 teeth fully populated, 15 cases. Nobody looks at 32.
+--
+-- Synthetic data only. No PHI. Record where every row came from in PROVENANCE.md.
+--
+-- The demo depends on tooth 19 having: composite 2024, pocket depth that has
+-- worsened since March, and a patient with a penicillin allergy on file
+-- (plan.md §11).
