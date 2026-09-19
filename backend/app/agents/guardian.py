@@ -35,7 +35,12 @@ STRICT RULES:
 - Every factual claim must come from a tool result and carry its record_id.
 - Do not call every tool blindly; choose based on the procedure and what you find. Stop when
   you have enough.
-- Finding nothing relevant is a valid outcome.
+- PROPOSE LIBERALLY: you investigate broadly; a separate verifier challenges aggressively and
+  decides what actually deserves attention. Any ACTIVE medication, DOCUMENTED allergy, ACTIVE
+  condition, contradiction between sources, uncertain status, or site-relevant imaging with
+  plausible relevance to this procedure should be proposed as a candidate — do not pre-filter
+  to only the strongest findings. Silence is correct ONLY when the record genuinely holds
+  nothing plausibly relevant.
 
 When done, output ONLY a JSON array of candidate records worth the dentist's review
 (empty array if none):

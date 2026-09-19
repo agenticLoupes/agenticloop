@@ -64,14 +64,21 @@ insert into imaging_study (id, patient_id, tooth_number, region_label, image_url
 -- ============ DEMO-011..018 — variety (lighter records for different tool paths) ============
 insert into medication (id, patient_id, medication_name, status, recorded_at) values
 ('MED-011','DEMO-011','Lisinopril','active','2026-01-10'),
+('MED-013','DEMO-013','Isotretinoin','active','2026-02-01'),
 ('MED-014','DEMO-014','Metformin','active','2025-03-01'),
+('MED-015','DEMO-015','Ibuprofen','active','2026-05-01'),
 ('MED-016','DEMO-016','Apixaban','active','2026-02-20');
 insert into allergy (id, patient_id, substance, reaction, status, recorded_at) values
 ('ALG-012','DEMO-012','Latex','contact reaction','active','2020-01-01'),
+('ALG-014','DEMO-014','Lidocaine','documented reaction','active','2021-06-01'),
 ('ALG-016','DEMO-016','Aspirin','documented','active','2019-01-01');
 insert into medical_condition (id, patient_id, condition_name, status, recorded_at) values
+('COND-012','DEMO-012','Latex sensitivity noted at intake','active','2020-01-01'),
 ('COND-014','DEMO-014','Type 2 diabetes','active','2024-01-01'),
 ('COND-016','DEMO-016','Hypertension','active','2023-01-01');
+insert into imaging_study (id, patient_id, tooth_number, region_label, image_url, source_label, recorded_at) values
+('IMG-004','DEMO-011',8,'Upper front — tooth #8 region','/assets/imaging/IMG-004.png','Synthetic radiograph','2026-08-20'),
+('IMG-005','DEMO-017',30,'Lower right — tooth #30 region','/assets/imaging/IMG-005.png','Synthetic radiograph','2026-06-10');
 insert into dental_event (id, patient_id, tooth_number, event_type, event_date, summary) values
 ('DENT-013A','DEMO-013',8,'cleaning','2026-04-01','Routine cleaning'),
 ('DENT-015A','DEMO-015',19,'filling','2025-12-01','Filling, tooth #19'),

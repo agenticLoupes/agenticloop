@@ -9,7 +9,11 @@ const SCENARIO_HINTS: Record<string, { tag: string; hint: string }> = {
   "DEMO-008": { tag: "SILENCE", hint: "Stale history only — the agent should stay quiet" },
   "DEMO-009": { tag: "VERIFY", hint: "A note mentions a medication change; current status unknown" },
   "DEMO-010": { tag: "IMAGING", hint: "Radiograph of the extraction site — vision review" },
+  "DEMO-011": { tag: "IMAGING", hint: "Implant candidate — radiograph of the #8 region on file" },
+  "DEMO-012": { tag: "ALLERGY", hint: "Documented latex sensitivity — relevant to most procedures" },
+  "DEMO-014": { tag: "ALLERGY", hint: "Documented lidocaine reaction + diabetes" },
   "DEMO-016": { tag: "TRANSCRIPT", hint: "On an anticoagulant; benign visit transcript" },
+  "DEMO-017": { tag: "IMAGING", hint: "Radiograph of the #30 region on file" },
 };
 
 export default function PatientSelect({

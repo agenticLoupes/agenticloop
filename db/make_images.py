@@ -17,6 +17,8 @@ IMAGES = {
     "IMG-001": "Lower right — tooth #30 region",
     "IMG-002": "Upper right — tooth #3 region",
     "IMG-003": "Lower left — tooth #19 region (low detail)",
+    "IMG-004": "Upper front — tooth #8 region",
+    "IMG-005": "Lower right — tooth #30 region",
 }
 
 W, H = 900, 460
