@@ -1,4 +1,4 @@
-# DentAssist Guardian — demo script (2:50, Agents Track)
+# LOUPEIN — demo script (2:50, Agents Track)
 
 Word for word. Every beat names the patient, the inputs, and what must be on screen.
 Grounded in main at `971f099` and the scenario sweep (`docs/SCENARIOS.md`).
@@ -19,9 +19,9 @@ Total runtime target: 2:50. Hard cap 3:00.
 
 ## 0:00–0:15 — Who we are
 
-Screen: patient list, header reading "DentAssist Guardian. A second pair of eyes on the chart before you start." Step bar shows Patient, Procedure, Review. Footer reads "Synthetic data — prototype". (Labels here match main after #37; on older builds the button reads "Challenge procedure".)
+Screen: patient list, header reading "LOUPEIN. A second pair of eyes on the chart before you start." Step bar shows Patient, Procedure, Review. Footer reads "Synthetic data — prototype". (Labels here match main after #37; on older builds the button reads "Challenge procedure".)
 
-> "We're DentAssist Guardian, Agents Track. Dental records hold a lot, but the system waits for the dentist to go looking. Guardian starts from what the dentist is about to do and investigates the record first."
+> "We're LOUPEIN, Agents Track. Dental records hold a lot, but the system waits for the dentist to go looking. LOUPEIN starts from what the dentist is about to do and sends its Guardian agent into the record first."
 
 > "Everything you'll see is synthetic data. This is a proof of concept, not a diagnostic device."
 
