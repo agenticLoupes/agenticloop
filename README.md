@@ -12,7 +12,7 @@ remembers what it found.
 <!-- exact copy-pasteable commands. plan.md §12 -->
 
 ```bash
-git clone https://github.com/Rishabh-Pagaria/agenticloop.git && cd agenticloop
+git clone https://github.com/agenticLoupes/agenticloop.git && cd agenticloop
 cp .env.example .env          # add OPENAI_API_KEY
 
 cd backend && python -m venv .venv && source .venv/bin/activate
