@@ -20,6 +20,12 @@ export default function PatientSelect({
 
   return (
     <section>
+      <p className="mb-5 rounded-md border border-teal-900/15 bg-teal-50 px-3.5 py-3 text-[13px] leading-relaxed text-teal-950">
+        An autonomous agent reviews a patient&apos;s record <em>before</em> a
+        procedure — it investigates medications, allergies, notes and imaging,
+        challenges its own findings, and surfaces only source-backed records
+        worth your review.
+      </p>
       <h2 className="mb-4 text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
         Select demo patient
       </h2>
