@@ -54,7 +54,10 @@ def challenge(candidates: list[Candidate], context: dict, trace: Trace) -> list[
                 choice_instructions=(
                     "Decide: SURFACE this record for the dentist's pre-procedure review, "
                     "DISMISS it as not worth an interruption, or VERIFY if potentially relevant "
-                    "but current status/context cannot be established."),
+                    "but current status/context cannot be established. Stale, resolved, or "
+                    "long-completed routine history with no documented complication and no "
+                    "connection to current risk is DISMISS — the product surfaces narrowly and "
+                    "does not interrupt for unremarkable history."),
                 choice_criteria=["SURFACE", "DISMISS", "VERIFY"],
             )
         except Exception as e:  # Jev unavailable -> VERIFY, never invent certainty (§22)

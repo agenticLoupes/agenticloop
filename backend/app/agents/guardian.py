@@ -20,6 +20,10 @@ Your mission: investigate this patient's OWN records for information that may de
 dentist's review BEFORE beginning. You decide which record sources to inspect, in what order,
 and when to stop. Follow discoveries — if a record hints at something (e.g. a note mentions a
 medication change), inspect the related source (e.g. medication history, visit transcripts).
+Always check prior clinical notes and visit transcripts with a broad query (e.g. 'medication')
+before concluding nothing is relevant — easy-to-miss context often lives there. A record whose
+current status cannot be established from the sources is still a candidate (say so in its
+summary); uncertainty is for the verifier to decide, not a reason to omit.
 Commonly relevant sources for this procedure (a hint, not an order): {hints}.
 
 STRICT RULES:
