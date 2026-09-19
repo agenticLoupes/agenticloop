@@ -4,7 +4,7 @@
 
 **Goal:** Build an autonomous pre-procedure record-review agent that investigates a synthetic dental/medical record, challenges its own findings, and surfaces only source-backed records worth reviewing.
 
-**Architecture:** Next.js (mobile-first) → FastAPI → LangGraph orchestrating four agents (Context Interpreter, Guardian Investigator, Skeptic/Verifier, Assist Composer) over a deterministic tool layer that reads synthetic patient records from Supabase Postgres. Featherless (OpenAI-compatible) supplies inference. State is explicit application state, never hidden conversation history.
+**Architecture:** Next.js (mobile-first) → FastAPI → LangGraph orchestrating four agents (Context Interpreter, Guardian Investigator, Skeptic/Verifier, Assist Composer) over a deterministic tool layer that reads synthetic patient records — including synthetic radiographs — from Supabase Postgres. A vision-capable model supplies the Guardian's tool-calling; **Jev (TypeSafe) supplies the Skeptic's decisions**. A **procedure playbook** (static, authored) steers *which* records the Guardian investigates (pattern-informed investigation), without ever producing advice. State is explicit application state, never hidden conversation history.
 
 **Tech Stack:** Next.js 15 (App Router, TypeScript), Tailwind CSS, FastAPI, Python 3.11+, LangGraph, Featherless (OpenAI-compatible adapter) for the Guardian's open-ended tool-calling, **TypeSafe/Jev (System One) for the Skeptic/Verifier decisions**, Supabase Postgres, pytest.
 
@@ -18,7 +18,9 @@ Every task's requirements implicitly include this section. Values copied verbati
 
 - **Data is 100% synthetic.** UI must always show the label `SYNTHETIC DATA — PROTOTYPE` (§7). Never imply real patients.
 - **Evidence contract (§12):** `NO EVIDENCE ID → NO FACTUAL CARD`. Every candidate and surfaced card carries `evidence_ids`; clicking a card must open the underlying synthetic record.
-- **No diagnosis / no treatment / no prescription** output, ever (§6 "Do not build", §21).
+- **No diagnosis / no treatment / no prescription / no clinical advice** output, ever (§6 "Do not build", §21, §30). No agent tells the dentist or patient what to *do*.
+- **Pattern-informed investigation is steering, not advice (user-approved "Reading A").** The `procedure_playbook` maps a procedure → record *categories* commonly worth investigating (e.g. extraction → medications/allergies/bleeding-risk conditions/tooth history). It only influences *which of the patient's own records the Guardian inspects and surfaces*. It NEVER emits a recommendation. Its only user-visible trace is a `reason_shown` explaining *why a record was surfaced* ("medications are commonly relevant to extractions") — never *what to do*. `healthcare-reviewer` polices this at Gate 2.
+- **Vision is locate + relevance only (user-approved).** `read_imaging` identifies the region/tooth an image covers and whether it is relevant to the procedure. It does NOT identify a cause, finding, or diagnosis (§21). Images are synthetic with authored ground-truth labels; the model's output is validated against the label, so a vision hallucination can only degrade to VERIFY/DISMISS — never a false SURFACE.
 - **Safe product language only (§21).** Use "Record to review", "Item to verify", "Relevant record located", "Selected during pre-procedure review", "Source evidence", "Current status could not be established", "No additional record surfaced". Avoid "Unsafe procedure", "Do not perform", "Diagnosis", "You should prescribe", "Recommended treatment", "definitely has", "Clinically validated", "HIPAA compliant".
 - **No confidence percentages** (§9.3). Decisions are `SURFACE | DISMISS | VERIFY` only. The decision comes from a TypeSafe **Choice** (its distribution stays internal; no % shown to the dentist per §21). The 8 skeptic checks (§9.3) are TypeSafe **Noul** judgments over the candidate + its evidence `Record`s.
 - **The LLM never invents patient facts** (§11). All facts originate from deterministic tool results that carry a `record_id`.
@@ -52,9 +54,11 @@ DentAssist-Guardian/
 │   │   ├── config.py               # env/settings (Supabase, Featherless)
 │   │   ├── db.py                   # connection/pool
 │   │   ├── models.py               # pydantic: Record, InvestigationState, Candidate, Card, AgentEvent
+│   │   ├── playbook.py             # procedure → record-category map (pattern-informed steering)
 │   │   ├── tools/
 │   │   │   ├── __init__.py          # tool registry + JSON schemas (§11)
-│   │   │   └── records.py           # the 8 deterministic query functions
+│   │   │   ├── records.py           # the 8 deterministic query functions
+│   │   │   └── imaging.py           # get_imaging (deterministic) + read_imaging (vision + ground-truth gate)
 │   │   ├── agents/
 │   │   │   ├── context_interpreter.py   # §9.1
 │   │   │   ├── guardian.py              # §9.2
@@ -126,7 +130,7 @@ def test_settings_reads_env(monkeypatch):
 - Test: `backend/tests/test_schema.py`
 
 **Interfaces:**
-- Produces: 8 tables exactly per §17 — `patient`, `dental_event`, `medical_condition`, `medication`, `allergy`, `clinical_note`, `investigation_run`, `agent_event`. Every domain record table has a stable text `record_id`-compatible primary display id. Add a human `demo_identifier` on `patient` (e.g. `DEMO-007`) and a text `id` on record tables shaped as `MED-018`, `DENT-…`, `ALG-…`, `COND-…`, `NOTE-…` so evidence IDs match §12 examples.
+- Produces: 8 tables per §17 — `patient`, `dental_event`, `medical_condition`, `medication`, `allergy`, `clinical_note`, `investigation_run`, `agent_event` — **plus a 9th `imaging_study`** (`id` e.g. `IMG-001`, `patient_id`, `tooth_number`, `region_label` (authored ground truth), `image_url`, `source_label`, `recorded_at`, `metadata`). Every domain record table has a stable text `record_id`-compatible primary display id. Add a human `demo_identifier` on `patient` (e.g. `DEMO-007`) and a text `id` on record tables shaped as `MED-018`, `DENT-…`, `ALG-…`, `COND-…`, `NOTE-…`, `IMG-…` so evidence IDs match §12 examples.
 
 - [ ] **Step 1: Write the failing test** — connect with `psycopg`, assert each of the 8 tables exists and required columns are present (§17 column lists).
 - [ ] **Step 2: Run to verify it fails** (tables absent).
@@ -141,7 +145,7 @@ def test_settings_reads_env(monkeypatch):
 - Test: `backend/tests/test_seed.py`
 
 **Interfaces:**
-- Produces: exactly 12 patients incl. `DEMO-007` (the §7 warfarin/penicillin/AFib example). At least one patient each for **Scenario A (SURFACE)**, **B (DISMISS)**, **C (VERIFY)** (§8). `scenarios.md` documents, per patient, the planned procedure and the expected outcome + which record proves it.
+- Produces: exactly 12 patients incl. `DEMO-007` (the §7 warfarin/penicillin/AFib example). At least one patient each for **Scenario A (SURFACE)**, **B (DISMISS)**, **C (VERIFY)** (§8). **~3 synthetic radiographs** generated by `db/make_images.py` (Pillow) with authored `region_label` ground truth — one SURFACE-relevant, one DISMISS, one VERIFY-ambiguous — stored as PNG (repo `db/assets/imaging/` or Supabase Storage) and referenced by `imaging_study` rows. `scenarios.md` documents, per patient, the planned procedure, expected outcome, and which record (incl. imaging) proves it.
 
 - [ ] **Step 1: Write the failing test** — assert `count(patient)==12`; assert `DEMO-007` has an active `medication` named `Warfarin` with a resolvable `id`; assert at least one patient has a clinical note mentioning a medication change with *no* corresponding current medication row (drives VERIFY, §8-C); assert at least one patient has a stale/contradicted candidate (drives DISMISS, §8-B).
 - [ ] **Step 2: Run to verify it fails.**
@@ -201,6 +205,21 @@ def test_settings_reads_env(monkeypatch):
 - [ ] **Step 4: Run to verify they pass.**
 - [ ] **Step 5: Commit** — `feat(tools): seven deterministic record tools`.
 
+### Task 1.6b: `get_imaging` (deterministic imaging tool)
+
+**Files:**
+- Create: `backend/app/tools/imaging.py`
+- Test: `backend/tests/test_tools.py`
+
+**Interfaces:**
+- Produces: `get_imaging(patient_id, tooth_number=None) -> list[Record]` (imaging rows as `Record`s; `data` includes `image_url` and authored `region_label`). Note: the vision `read_imaging` lands in Phase 2 (needs the model); `get_imaging` is pure SQL and belongs to Gate 1.
+
+- [ ] **Step 1: Write the failing test** — `get_imaging(DEMO-007, tooth_number=30)` returns the `IMG-…` record for the #30 region.
+- [ ] **Step 2: Run to verify it fails.**
+- [ ] **Step 3: Implement** `get_imaging` in `imaging.py` (parameterized select from `imaging_study`).
+- [ ] **Step 4: Run to verify it passes.**
+- [ ] **Step 5: Commit** — `feat(tools): get_imaging deterministic tool`.
+
 ### Task 1.7: GATE 1 verification test
 
 **Files:**
@@ -221,11 +240,12 @@ def test_settings_reads_env(monkeypatch):
 **Tasks:**
 - 2.1 `provider.py` — Featherless OpenAI-compatible adapter (`langchain-openai` `ChatOpenAI` pointed at `featherless_base_url`, key server-side) for the Guardian. Plus `jev.py` — TypeSafe client wrapper (`typesafe-sdk`, reads `TYPESAFE_API_KEY` from env) exposing `choice(state, instructions, criteria)` and `noul(state, instructions)` helpers. Includes a one-shot reliability probe (§25 step 11) for both providers.
 - 2.2 `models.py` — `InvestigationState` (§13), `Candidate`, `SkepticResult`, `Card`, `AgentEvent`.
-- 2.3 `tools/__init__.py` — tool JSON schemas + registry binding the Phase-1 functions for tool-calling (§11).
+- 2.3 `tools/__init__.py` — tool JSON schemas + registry binding the Phase-1 functions (incl. `get_imaging`) for tool-calling (§11). Provider must be **vision-capable** (for `read_imaging`); pick the concrete model here (Featherless if it serves a good vision model, else OpenRouter/Together). `read_imaging(record_id)` added in `tools/imaging.py`: calls the vision model for locate+relevance, then **validates the reported region against `region_label`**; disagreement/uncertainty flags the candidate uncertain (→ Skeptic VERIFY/DISMISS). Never returns a diagnosis.
+- 2.3b `playbook.py` — static authored `procedure_playbook: dict[str, list[str]]` mapping procedure → record categories commonly worth investigating (pattern-informed steering, Reading A). Pure data + a `hint_tools_for(procedure) -> list[str]` helper. No advice, no treatment logic. `# ponytail: static dict, not an ML model`.
 - 2.4 `agents/context_interpreter.py` (§9.1) — normalize intent, preserve ids, flag missing context, never invent facts.
-- 2.5 `agents/guardian.py` (§9.2) — model-driven tool selection loop; chooses next tool from observations; emits candidates.
+- 2.5 `agents/guardian.py` (§9.2) — model-driven tool selection loop; **consults `playbook.hint_tools_for(procedure)` as a starting hint** but remains free to deviate/follow discoveries (preserves §10 agency — the hint is not a fixed order); chooses next tool from observations; emits candidates. May call imaging tools when the procedure/tooth warrants.
 - 2.6 `agents/skeptic.py` (§9.3) — **runs on Jev**: 8 Noul checks (this-patient? source real? relevant? current? contradicted? duplicate? card overclaims? UI-linkable?) over the candidate + its `Record`s, then a Choice → SURFACE/DISMISS/VERIFY. No confidence %; enforces the evidence contract (drops any candidate lacking a resolvable `evidence_id`). `.env.example` gains `TYPESAFE_API_KEY`.
-- 2.7 `agents/composer.py` (§9.4) — approved evidence → card copy using **safe language only** (Global Constraints).
+- 2.7 `agents/composer.py` (§9.4) — approved evidence → card copy using **safe language only** (Global Constraints). `reason_shown` may cite the *pattern* behind surfacing ("medications are commonly relevant to extractions") but never an instruction. Imaging cards read "imaging record to review — <region>", never a finding.
 - 2.8 `graph.py` — assemble LangGraph: interpreter → guardian ↔ tools → skeptic → composer; persists trace via `trace.py`.
 - 2.9 `main.py` — routes (§16): `/health`, `/demo/patients`, `/patients/{id}`, `POST /investigations`, `GET /investigations/{id}`, `GET /investigations/{id}/trace`, `GET /evidence/{type}/{id}`, `POST /demo/reset`.
 
@@ -251,7 +271,7 @@ def test_settings_reads_env(monkeypatch):
 
 **Deliverable:** the 5 screens (§20), mobile-first, working end-to-end from a phone/browser.
 
-**Tasks:** Next.js scaffold + Tailwind; `lib/api.ts` typed client; Screen 1 patient selector; Screen 2 procedure/tooth form; Screen 3 investigation + **judge-visible Agent Trace** (lightweight polling of `/trace`, §15); Screen 4 result cards; Screen 5 evidence drawer; persistent `SYNTHETIC DATA — PROTOTYPE` banner; demo reset. Direction: calm/clinical/trustworthy (`minimalist-ui` + `design-taste-frontend`); trace uses restrained motion (`motion-ui`); a11y throughout (`accessibility`).
+**Tasks:** Next.js scaffold + Tailwind; `lib/api.ts` typed client; Screen 1 patient selector; Screen 2 procedure/tooth form; Screen 3 investigation + **judge-visible Agent Trace** (lightweight polling of `/trace`, §15) — trace shows imaging-tool calls too; Screen 4 result cards; Screen 5 evidence drawer that **renders the synthetic image via `<img>`** (no DICOM viewer, §28 stays future) under the `SYNTHETIC DATA — PROTOTYPE` banner; demo reset. Direction: calm/clinical/trustworthy (`minimalist-ui` + `design-taste-frontend`); trace uses restrained motion (`motion-ui`); a11y throughout (`accessibility`).
 
 **Gate 4 (§25):** complete flow works from phone/browser without terminal.
 
@@ -283,7 +303,7 @@ def test_settings_reads_env(monkeypatch):
 
 ## Self-Review
 
-**Spec coverage (§ → task):** §7 data→1.3; §8 scenarios→1.3/2.x; §9.1–9.4 agents→2.4–2.7; §10 agency→Phase 3; §11 tools→1.5/1.6/2.3; §12 evidence contract→Global Constraints + 1.5/2.6; §13 state→2.2; §14 stack→scaffold; §16 API→2.9; §17 schema→1.2; §20 UI→Phase 4; §21 safe language→Global Constraints + 2.7 + healthcare-reviewer; §22 failure→Phase 5; §25 gates→each phase; §27 DoD→Phase 6. **No uncovered sections.**
+**Spec coverage (§ → task):** §7 data→1.3; §8 scenarios→1.3/2.x; §9.1–9.4 agents→2.4–2.7; §10 agency→Phase 3; §11 tools→1.5/1.6/1.6b/2.3; §12 evidence contract→Global Constraints + 1.5/2.6; §13 state→2.2; §14 stack→scaffold; §16 API→2.9; §17 schema→1.2; §20 UI→Phase 4; §21 safe language→Global Constraints + 2.7 + healthcare-reviewer; §22 failure→Phase 5; §25 gates→each phase; §27 DoD→Phase 6. **User-approved additions:** vision/imaging→1.2/1.3/1.6b/2.3 (+ Global Constraints fail-safe gate); pattern-informed investigation (Reading A)→2.3b/2.5 (+ Global Constraints steering-not-advice rule). **No uncovered sections.**
 
 **Placeholder scan:** Phase 1 is fully step-level. Phases 2–6 are intentionally task-level roadmaps expanded at each gate per the chosen cadence — flagged explicitly, not hidden TODOs.
 
