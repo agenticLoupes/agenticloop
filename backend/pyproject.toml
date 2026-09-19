@@ -8,6 +8,7 @@ dependencies = [
     "uvicorn[standard]",
     "pydantic",
     "pydantic-settings",
+    "python-multipart",  # required by the /uploads/imaging form endpoint
     "psycopg[binary,pool]",
     "langgraph",
     "langchain-google-genai",
