@@ -6,10 +6,10 @@
 
 **Architecture:** Next.js (mobile-first) → FastAPI → LangGraph orchestrating four agents (Context Interpreter, Guardian Investigator, Skeptic/Verifier, Assist Composer) over a deterministic tool layer that reads synthetic patient records — including synthetic radiographs — from Supabase Postgres. A vision-capable model supplies the Guardian's tool-calling; **Jev (TypeSafe) supplies the Skeptic's decisions**. A **procedure playbook** (static, authored) steers *which* records the Guardian investigates (pattern-informed investigation), without ever producing advice. State is explicit application state, never hidden conversation history.
 
-**Tech Stack:** Next.js 15 (App Router, TypeScript), Tailwind CSS, FastAPI, Python 3.11+, LangGraph, **OpenAI (GPT-4o-class, vision + tool-calling) for the Guardian's tool-selection *and* `read_imaging` vision**, **TypeSafe/Jev (System One) for the Skeptic/Verifier decisions**, Supabase Postgres, pytest.
+**Tech Stack:** Next.js 15 (App Router, TypeScript), Tailwind CSS, FastAPI, Python 3.11+, LangGraph, **Google Gemini (gemini-2.5-flash, vision + tool-calling) via Google AI Studio for the Guardian's tool-selection *and* `read_imaging` vision** (`langchain-google-genai`), **TypeSafe/Jev (System One) for the Skeptic/Verifier decisions**, Supabase Postgres, pytest.
 
 **Stack override (user instruction, supersedes §32):**
-1. **Provider = OpenAI, not Featherless.** The hackathon does not require Featherless, and one GPT-4o-class model serves both the Guardian's tool-calling and the vision `read_imaging` (multimodal). Featherless is dropped — one provider, one key. The key stays server-side (§14).
+1. **Provider = Google Gemini (free Google AI Studio tier), not Featherless/OpenAI.** The hackathon does not require Featherless; one `gemini-2.5-flash` model serves both the Guardian's tool-calling and the vision `read_imaging` (multimodal), and the AI Studio free tier keeps demo cost at zero. One provider, one key, server-side only (§14). `gemini-2.5-pro` is the drop-in upgrade if flash underperforms on tool-calling.
 2. **Decisions = Jev.** The Skeptic/Verifier (§9.3) decision `SURFACE | DISMISS | VERIFY` is a TypeSafe **Choice**, and its 8 checks are TypeSafe **Noul** judgments — not free-text LLM output. Removes a class of "invented certainty" failure.
 
 **Spec:** `PLAN.md` (frozen MVP master plan — this plan argues from it; executors read both). Section references below (`§N`) point into `PLAN.md`.
@@ -27,7 +27,7 @@ Every task's requirements implicitly include this section. Values copied verbati
 - **No confidence percentages** (§9.3). Decisions are `SURFACE | DISMISS | VERIFY` only. The decision comes from a TypeSafe **Choice** (its distribution stays internal; no % shown to the dentist per §21). The 8 skeptic checks (§9.3) are TypeSafe **Noul** judgments over the candidate + its evidence `Record`s.
 - **The LLM never invents patient facts** (§11). All facts originate from deterministic tool results that carry a `record_id`.
 - **Agent is not a fixed pipeline (§10).** Tool order must be model-chosen; different scenarios must produce different tool paths (Gate 3).
-- **Do not expose the model API key in the browser** (§14). OpenAI (and Jev) are called server-side (FastAPI) only.
+- **Do not expose the model API key in the browser** (§14). Gemini (and Jev) are called server-side (FastAPI) only.
 - **No custom realtime/WebSocket/SSE infrastructure** (§6). Trace is returned with the result or via lightweight polling (§15).
 - **Failure behavior table (§22) is normative.** Silence is a valid successful outcome.
 - **Frozen rule (§32):** do not redesign the product mid-build unless a technical blocker makes the core loop impossible.
@@ -53,7 +53,7 @@ DentAssist-Guardian/
 │   ├── pyproject.toml
 │   ├── app/
 │   │   ├── main.py                 # FastAPI app + routes (§16)
-│   │   ├── config.py               # env/settings (Supabase, OpenAI, TypeSafe)
+│   │   ├── config.py               # env/settings (Supabase, Gemini, TypeSafe)
 │   │   ├── db.py                   # connection/pool
 │   │   ├── models.py               # pydantic: Record, InvestigationState, Candidate, Card, AgentEvent
 │   │   ├── playbook.py             # procedure → record-category map (pattern-informed steering)
@@ -67,7 +67,7 @@ DentAssist-Guardian/
 │   │   │   ├── skeptic.py               # §9.3
 │   │   │   └── composer.py              # §9.4
 │   │   ├── graph.py                # LangGraph assembly (§14, §10)
-│   │   ├── provider.py             # OpenAI vision+tool-calling adapter (Guardian + read_imaging)
+│   │   ├── provider.py             # Gemini vision+tool-calling adapter (Guardian + read_imaging)
 │   │   ├── jev.py                  # TypeSafe/Jev wrapper (Skeptic decisions)
 │   │   └── trace.py                # AgentEvent recording
 │   └── tests/
@@ -103,7 +103,7 @@ DentAssist-Guardian/
 - Test: `backend/tests/test_config.py`
 
 **Interfaces:**
-- Produces: `app.config.Settings` (pydantic-settings) with `supabase_db_url: str`, `openai_api_key: str`, `openai_model: str = "gpt-4o"`, `openai_base_url: str = "https://api.openai.com/v1"`, `typesafe_api_key: str`. `get_settings() -> Settings` (cached).
+- Produces: `app.config.Settings` (pydantic-settings) with `supabase_db_url: str`, `google_api_key: str`, `gemini_model: str = "gemini-2.5-flash"`, `typesafe_api_key: str`. `get_settings() -> Settings` (cached).
 
 - [ ] **Step 1: Write the failing test**
 ```python
@@ -113,16 +113,15 @@ from app.config import get_settings
 
 def test_settings_reads_env(monkeypatch):
     monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://x")
-    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    monkeypatch.setenv("GOOGLE_API_KEY", "k")
     monkeypatch.setenv("TYPESAFE_API_KEY", "t")
     get_settings.cache_clear()
     s = get_settings()
     assert s.supabase_db_url == "postgresql://x"
-    assert s.openai_model == "gpt-4o"           # default
-    assert s.openai_base_url == "https://api.openai.com/v1"
+    assert s.gemini_model == "gemini-2.5-flash"   # default
 ```
 - [ ] **Step 2: Run to verify it fails** — `cd backend && pytest tests/test_config.py -v` → FAIL (module missing).
-- [ ] **Step 3: Implement** `app/config.py` using `pydantic-settings` `BaseSettings` with the fields above and `@lru_cache` on `get_settings`. Add deps to `pyproject.toml`: `fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `psycopg[binary]`, `langgraph`, `langchain-openai`, `openai`, `typesafe-sdk`, `httpx`; dev: `pytest`, `pytest-asyncio`. Write `.env.example` listing `SUPABASE_DB_URL=`, `OPENAI_API_KEY=`, `OPENAI_MODEL=gpt-4o`, `TYPESAFE_API_KEY=`.
+- [ ] **Step 3: Implement** `app/config.py` using `pydantic-settings` `BaseSettings` with the fields above and `@lru_cache` on `get_settings`. Add deps to `pyproject.toml`: `fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `psycopg[binary]`, `langgraph`, `langchain-google-genai`, `typesafe-sdk`, `httpx`; dev: `pytest`, `pytest-asyncio`. Write `.env.example` listing `SUPABASE_DB_URL=`, `GOOGLE_API_KEY=`, `GEMINI_MODEL=gemini-2.5-flash`, `TYPESAFE_API_KEY=`.
 - [ ] **Step 4: Run to verify it passes.**
 - [ ] **Step 5: Commit** — `feat(backend): project scaffold and settings`.
 
@@ -258,9 +257,9 @@ def test_settings_reads_env(monkeypatch):
 **Deliverable:** FastAPI service + LangGraph graph running the four agents against the tools, producing SURFACE/DISMISS/VERIFY with evidence IDs from the terminal/API.
 
 **Tasks:**
-- 2.1 `provider.py` — OpenAI adapter (`langchain-openai` `ChatOpenAI` with `openai_model`, key server-side) — a single vision+tool-calling client used by the Guardian **and** `read_imaging`. Plus `jev.py` — TypeSafe client wrapper (`typesafe-sdk`, reads `TYPESAFE_API_KEY`) exposing `choice(state, instructions, criteria)` and `noul(state, instructions)` helpers. Includes a one-shot reliability probe (§25 step 11) for both providers.
+- 2.1 `provider.py` — Gemini adapter (`langchain-google-genai` `ChatGoogleGenerativeAI` with `gemini_model`, `GOOGLE_API_KEY` server-side) — a single vision+tool-calling client used by the Guardian **and** `read_imaging`. Plus `jev.py` — TypeSafe client wrapper (`typesafe-sdk`, reads `TYPESAFE_API_KEY`) exposing `choice(state, instructions, criteria)` and `noul(state, instructions)` helpers. Includes a one-shot reliability probe (§25 step 11) for both providers.
 - 2.2 `models.py` — `InvestigationState` (§13), `Candidate`, `SkepticResult`, `Card`, `AgentEvent`.
-- 2.3 `tools/__init__.py` — tool JSON schemas + registry binding the Phase-1 functions (incl. `get_imaging`) for tool-calling (§11). `read_imaging(record_id)` added in `tools/imaging.py`: sends the image to the OpenAI vision model for locate+relevance, then **validates the reported region against `region_label`**; disagreement/uncertainty flags the candidate uncertain (→ Skeptic VERIFY/DISMISS). Never returns a diagnosis.
+- 2.3 `tools/__init__.py` — tool JSON schemas + registry binding the Phase-1 functions (incl. `get_imaging`) for tool-calling (§11). `read_imaging(record_id)` added in `tools/imaging.py`: sends the image to the Gemini vision model for locate+relevance, then **validates the reported region against `region_label`**; disagreement/uncertainty flags the candidate uncertain (→ Skeptic VERIFY/DISMISS). Never returns a diagnosis.
 - 2.3b `playbook.py` — static authored `procedure_playbook: dict[str, list[str]]` mapping procedure → record categories commonly worth investigating (pattern-informed steering, Reading A). Pure data + a `hint_tools_for(procedure) -> list[str]` helper. No advice, no treatment logic. `# ponytail: static dict, not an ML model`.
 - 2.4 `agents/context_interpreter.py` (§9.1) — normalize intent, preserve ids, flag missing context, never invent facts.
 - 2.5 `agents/guardian.py` (§9.2) — model-driven tool selection loop; **consults `playbook.hint_tools_for(procedure)` as a starting hint** but remains free to deviate/follow discoveries (preserves §10 agency — the hint is not a fixed order); chooses next tool from observations; emits candidates. May call imaging tools when the procedure/tooth warrants, and `search_conversations` to check prior-visit transcripts for contradictions.
