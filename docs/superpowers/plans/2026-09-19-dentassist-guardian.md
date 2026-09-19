@@ -6,7 +6,9 @@
 
 **Architecture:** Next.js (mobile-first) → FastAPI → LangGraph orchestrating four agents (Context Interpreter, Guardian Investigator, Skeptic/Verifier, Assist Composer) over a deterministic tool layer that reads synthetic patient records from Supabase Postgres. Featherless (OpenAI-compatible) supplies inference. State is explicit application state, never hidden conversation history.
 
-**Tech Stack:** Next.js 15 (App Router, TypeScript), Tailwind CSS, FastAPI, Python 3.11+, LangGraph, Featherless (OpenAI-compatible adapter), Supabase Postgres, pytest, Playwright.
+**Tech Stack:** Next.js 15 (App Router, TypeScript), Tailwind CSS, FastAPI, Python 3.11+, LangGraph, Featherless (OpenAI-compatible adapter) for the Guardian's open-ended tool-calling, **TypeSafe/Jev (System One) for the Skeptic/Verifier decisions**, Supabase Postgres, pytest.
+
+**Stack override (user instruction, supersedes §32):** The Skeptic/Verifier (§9.3) decision `SURFACE | DISMISS | VERIFY` is a TypeSafe **Choice** judgment, and its 8 checks (§9.3) are TypeSafe **Noul** judgments — not free-text Featherless output. Rationale: these are exactly the calibrated typed judgments System One is built for; it removes a class of "invented certainty" failure. Featherless remains the Guardian's tool-selection engine.
 
 **Spec:** `PLAN.md` (frozen MVP master plan — this plan argues from it; executors read both). Section references below (`§N`) point into `PLAN.md`.
 
@@ -18,7 +20,7 @@ Every task's requirements implicitly include this section. Values copied verbati
 - **Evidence contract (§12):** `NO EVIDENCE ID → NO FACTUAL CARD`. Every candidate and surfaced card carries `evidence_ids`; clicking a card must open the underlying synthetic record.
 - **No diagnosis / no treatment / no prescription** output, ever (§6 "Do not build", §21).
 - **Safe product language only (§21).** Use "Record to review", "Item to verify", "Relevant record located", "Selected during pre-procedure review", "Source evidence", "Current status could not be established", "No additional record surfaced". Avoid "Unsafe procedure", "Do not perform", "Diagnosis", "You should prescribe", "Recommended treatment", "definitely has", "Clinically validated", "HIPAA compliant".
-- **No confidence percentages** (§9.3). Decisions are `SURFACE | DISMISS | VERIFY` only.
+- **No confidence percentages** (§9.3). Decisions are `SURFACE | DISMISS | VERIFY` only. The decision comes from a TypeSafe **Choice** (its distribution stays internal; no % shown to the dentist per §21). The 8 skeptic checks (§9.3) are TypeSafe **Noul** judgments over the candidate + its evidence `Record`s.
 - **The LLM never invents patient facts** (§11). All facts originate from deterministic tool results that carry a `record_id`.
 - **Agent is not a fixed pipeline (§10).** Tool order must be model-chosen; different scenarios must produce different tool paths (Gate 3).
 - **Do not expose the model API key in the browser** (§14). Featherless is called server-side (FastAPI) only.
@@ -59,7 +61,8 @@ DentAssist-Guardian/
 │   │   │   ├── skeptic.py               # §9.3
 │   │   │   └── composer.py              # §9.4
 │   │   ├── graph.py                # LangGraph assembly (§14, §10)
-│   │   ├── provider.py             # Featherless OpenAI-compatible adapter
+│   │   ├── provider.py             # Featherless OpenAI-compatible adapter (Guardian)
+│   │   ├── jev.py                  # TypeSafe/Jev wrapper (Skeptic decisions)
 │   │   └── trace.py                # AgentEvent recording
 │   └── tests/
 │       ├── conftest.py             # seeded DB fixture
@@ -216,12 +219,12 @@ def test_settings_reads_env(monkeypatch):
 **Deliverable:** FastAPI service + LangGraph graph running the four agents against the tools, producing SURFACE/DISMISS/VERIFY with evidence IDs from the terminal/API.
 
 **Tasks:**
-- 2.1 `provider.py` — Featherless OpenAI-compatible adapter (`langchain-openai` `ChatOpenAI` pointed at `featherless_base_url`, key server-side). Includes a one-shot reliability probe (§25 step 11): does the chosen model return valid tool-calls/structured output?
+- 2.1 `provider.py` — Featherless OpenAI-compatible adapter (`langchain-openai` `ChatOpenAI` pointed at `featherless_base_url`, key server-side) for the Guardian. Plus `jev.py` — TypeSafe client wrapper (`typesafe-sdk`, reads `TYPESAFE_API_KEY` from env) exposing `choice(state, instructions, criteria)` and `noul(state, instructions)` helpers. Includes a one-shot reliability probe (§25 step 11) for both providers.
 - 2.2 `models.py` — `InvestigationState` (§13), `Candidate`, `SkepticResult`, `Card`, `AgentEvent`.
 - 2.3 `tools/__init__.py` — tool JSON schemas + registry binding the Phase-1 functions for tool-calling (§11).
 - 2.4 `agents/context_interpreter.py` (§9.1) — normalize intent, preserve ids, flag missing context, never invent facts.
 - 2.5 `agents/guardian.py` (§9.2) — model-driven tool selection loop; chooses next tool from observations; emits candidates.
-- 2.6 `agents/skeptic.py` (§9.3) — the 8 checks → SURFACE/DISMISS/VERIFY; no confidence %; enforces evidence contract.
+- 2.6 `agents/skeptic.py` (§9.3) — **runs on Jev**: 8 Noul checks (this-patient? source real? relevant? current? contradicted? duplicate? card overclaims? UI-linkable?) over the candidate + its `Record`s, then a Choice → SURFACE/DISMISS/VERIFY. No confidence %; enforces the evidence contract (drops any candidate lacking a resolvable `evidence_id`). `.env.example` gains `TYPESAFE_API_KEY`.
 - 2.7 `agents/composer.py` (§9.4) — approved evidence → card copy using **safe language only** (Global Constraints).
 - 2.8 `graph.py` — assemble LangGraph: interpreter → guardian ↔ tools → skeptic → composer; persists trace via `trace.py`.
 - 2.9 `main.py` — routes (§16): `/health`, `/demo/patients`, `/patients/{id}`, `POST /investigations`, `GET /investigations/{id}`, `GET /investigations/{id}/trace`, `GET /evidence/{type}/{id}`, `POST /demo/reset`.
