@@ -1,69 +1,155 @@
-import Image from "next/image";
+"use client";
+
+import { useCallback, useState } from "react";
+import {
+  getTrace,
+  resetDemo,
+  startInvestigation,
+  type InvestigationState,
+  type Patient,
+  type TraceEvent,
+} from "@/lib/api";
+import PatientSelect from "@/components/PatientSelect";
+import ProcedureForm from "@/components/ProcedureForm";
+import TraceView from "@/components/TraceView";
+import ResultCards from "@/components/ResultCards";
+import EvidenceModal from "@/components/EvidenceModal";
+
+type Step = "patient" | "procedure" | "investigating" | "results" | "error";
 
 export default function Home() {
+  const [step, setStep] = useState<Step>("patient");
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [intent, setIntent] = useState<{
+    procedure: string;
+    tooth_number: number | null;
+  } | null>(null);
+  const [result, setResult] = useState<InvestigationState | null>(null);
+  const [trace, setTrace] = useState<TraceEvent[] | null>(null);
+  const [evidenceId, setEvidenceId] = useState<string | null>(null);
+
+  const investigate = useCallback(
+    async (patientId: string, procedure: string, toothNumber: number | null) => {
+      setStep("investigating");
+      setTrace(null);
+      setResult(null);
+      try {
+        const res = await startInvestigation({
+          patient_id: patientId,
+          procedure,
+          tooth_number: toothNumber,
+        });
+        if (res.status === "error") throw new Error(res.error ?? "run failed");
+        setResult(res);
+        // fetch trace after completion, then animate it line-by-line
+        setTrace(await getTrace(res.run_id));
+      } catch {
+        setStep("error");
+      }
+    },
+    []
+  );
+
+  const restart = () => {
+    setStep("patient");
+    setPatient(null);
+    setIntent(null);
+    setResult(null);
+    setTrace(null);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-md flex-col px-5 pb-10 pt-8">
+      <header className="mb-8">
+        <h1 className="font-[family-name:var(--font-display)] text-xl font-bold uppercase tracking-tight text-stone-900">
+          DentAssist{" "}
+          <span className="text-teal-800">Guardian</span>
+        </h1>
+        <p className="mt-0.5 text-xs italic text-stone-500">
+          Before you begin, let the record challenge the plan.
+        </p>
+      </header>
+
+      <div className="flex-1">
+        {step === "patient" && (
+          <PatientSelect
+            onSelect={(p) => {
+              setPatient(p);
+              setStep("procedure");
+            }}
+          />
+        )}
+
+        {step === "procedure" && patient && (
+          <ProcedureForm
+            patientLabel={patient.demo_identifier}
+            onBack={() => setStep("patient")}
+            onSubmit={(procedure, toothNumber) => {
+              setIntent({ procedure, tooth_number: toothNumber });
+              investigate(patient.id, procedure, toothNumber);
+            }}
+          />
+        )}
+
+        {step === "investigating" && (
+          <TraceView trace={trace} onDone={() => setStep("results")} />
+        )}
+
+        {step === "results" && result && (
+          <ResultCards
+            result={result}
+            onViewSource={setEvidenceId}
+            onRestart={restart}
+          />
+        )}
+
+        {step === "error" && (
+          <section className="rounded-lg border border-stone-300 bg-white p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-700">
+              Recoverable demo error
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-stone-600">
+              The investigation could not be completed. No result was invented.
+              You can retry the check safely.
+            </p>
+            <div className="mt-4 flex gap-3">
+              {patient && intent && (
+                <button
+                  onClick={() =>
+                    investigate(patient.id, intent.procedure, intent.tooth_number)
+                  }
+                  className="rounded-md bg-teal-800 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white hover:bg-teal-700"
+                >
+                  Retry
+                </button>
+              )}
+              <button
+                onClick={restart}
+                className="rounded-md border border-stone-300 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-700 hover:border-stone-500"
+              >
+                Start over
+              </button>
+            </div>
+          </section>
+        )}
+      </div>
+
+      {evidenceId && (
+        <EvidenceModal evidenceId={evidenceId} onClose={() => setEvidenceId(null)} />
+      )}
+
+      <footer className="mt-10 flex items-center justify-between border-t border-stone-200 pt-4 text-[10px] uppercase tracking-[0.2em] text-stone-400">
+        <span>Synthetic data — prototype</span>
+        <button
+          onClick={() => {
+            resetDemo().catch(() => {});
+            restart();
+          }}
+          className="underline-offset-2 hover:text-stone-600 hover:underline"
+        >
+          Reset demo
+        </button>
+      </footer>
+    </main>
   );
 }
