@@ -10,7 +10,7 @@ import {
   type Patient,
   type TraceEvent,
 } from "@/lib/api";
-import PatientSelect from "@/components/PatientSelect";
+import PatientSelect, { type ScenarioSuggestion } from "@/components/PatientSelect";
 import ProcedureForm from "@/components/ProcedureForm";
 import TraceView from "@/components/TraceView";
 import ResultCards from "@/components/ResultCards";
@@ -21,6 +21,7 @@ type Step = "patient" | "procedure" | "investigating" | "results" | "error";
 export default function Home() {
   const [step, setStep] = useState<Step>("patient");
   const [patient, setPatient] = useState<Patient | null>(null);
+  const [suggested, setSuggested] = useState<ScenarioSuggestion | undefined>();
   const [intent, setIntent] = useState<{
     procedure: string;
     tooth_number: number | null;
@@ -86,8 +87,9 @@ export default function Home() {
       <div className="flex-1">
         {step === "patient" && (
           <PatientSelect
-            onSelect={(p) => {
+            onSelect={(p, s) => {
               setPatient(p);
+              setSuggested(s);
               setStep("procedure");
             }}
           />
@@ -96,6 +98,8 @@ export default function Home() {
         {step === "procedure" && patient && (
           <ProcedureForm
             patientLabel={patient.demo_identifier}
+            initialProcedure={suggested?.procedure}
+            initialTooth={suggested?.tooth ?? undefined}
             onBack={() => setStep("patient")}
             onSubmit={(procedure, toothNumber) => {
               setIntent({ procedure, tooth_number: toothNumber });
@@ -115,6 +119,7 @@ export default function Home() {
         {step === "results" && result && (
           <ResultCards
             result={result}
+            trace={trace}
             onViewSource={setEvidenceId}
             onRestart={restart}
           />

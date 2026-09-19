@@ -4,22 +4,27 @@ import { useEffect, useState } from "react";
 import { getPatients, type Patient } from "@/lib/api";
 
 // What each authored scenario demonstrates (db/scenarios.md) — so testers know where to look.
-const SCENARIO_HINTS: Record<string, { tag: string; hint: string }> = {
-  "DEMO-007": { tag: "SURFACE + TRANSCRIPT", hint: "Active Warfarin — and a visit transcript that contradicts it" },
-  "DEMO-008": { tag: "SILENCE", hint: "Stale history only — the agent should stay quiet" },
-  "DEMO-009": { tag: "VERIFY", hint: "A note mentions a medication change; current status unknown" },
-  "DEMO-010": { tag: "IMAGING", hint: "Radiograph of the extraction site — vision review" },
-  "DEMO-011": { tag: "IMAGING", hint: "Implant candidate — radiograph of the #8 region on file" },
-  "DEMO-012": { tag: "ALLERGY", hint: "Documented latex sensitivity — relevant to most procedures" },
-  "DEMO-014": { tag: "ALLERGY", hint: "Documented lidocaine reaction + diabetes" },
-  "DEMO-016": { tag: "TRANSCRIPT", hint: "On an anticoagulant; benign visit transcript" },
-  "DEMO-017": { tag: "IMAGING", hint: "Radiograph of the #30 region on file" },
+// suggested = the procedure+tooth that exercises the scenario; pre-filled on selection.
+export type ScenarioSuggestion = { procedure: string; tooth: number | null };
+const SCENARIO_HINTS: Record<
+  string,
+  { tag: string; hint: string; suggested: ScenarioSuggestion }
+> = {
+  "DEMO-007": { tag: "SURFACE + TRANSCRIPT", hint: "Active Warfarin — and a visit transcript that contradicts it", suggested: { procedure: "extraction", tooth: 30 } },
+  "DEMO-008": { tag: "SILENCE", hint: "Stale history only — the agent should stay quiet", suggested: { procedure: "extraction", tooth: 3 } },
+  "DEMO-009": { tag: "VERIFY", hint: "A note mentions a medication change; current status unknown", suggested: { procedure: "extraction", tooth: 19 } },
+  "DEMO-010": { tag: "IMAGING", hint: "Radiograph of the extraction site — vision review", suggested: { procedure: "extraction", tooth: 30 } },
+  "DEMO-011": { tag: "IMAGING", hint: "Implant candidate — radiograph of the #8 region on file", suggested: { procedure: "implant", tooth: 8 } },
+  "DEMO-012": { tag: "ALLERGY", hint: "Documented latex sensitivity — relevant to most procedures", suggested: { procedure: "root_canal", tooth: 9 } },
+  "DEMO-014": { tag: "ALLERGY", hint: "Documented lidocaine reaction + diabetes", suggested: { procedure: "filling", tooth: 12 } },
+  "DEMO-016": { tag: "TRANSCRIPT", hint: "On an anticoagulant; benign visit transcript", suggested: { procedure: "extraction", tooth: 14 } },
+  "DEMO-017": { tag: "IMAGING", hint: "Radiograph of the #30 region on file", suggested: { procedure: "crown", tooth: 30 } },
 };
 
 export default function PatientSelect({
   onSelect,
 }: {
-  onSelect: (p: Patient) => void;
+  onSelect: (p: Patient, suggested?: ScenarioSuggestion) => void;
 }) {
   const [patients, setPatients] = useState<Patient[] | null>(null);
   const [error, setError] = useState(false);
@@ -67,7 +72,7 @@ export default function PatientSelect({
               return (
                 <li key={p.id}>
                   <button
-                    onClick={() => onSelect(p)}
+                    onClick={() => onSelect(p, s?.suggested)}
                     className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-teal-50/60 focus-visible:bg-teal-50/60 focus-visible:outline-none"
                   >
                     <span className="min-w-0">

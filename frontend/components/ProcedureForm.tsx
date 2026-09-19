@@ -102,15 +102,19 @@ function ToothChart({
 
 export default function ProcedureForm({
   patientLabel,
+  initialProcedure,
+  initialTooth,
   onSubmit,
   onBack,
 }: {
   patientLabel: string;
+  initialProcedure?: string;
+  initialTooth?: number;
   onSubmit: (procedure: string, toothNumber: number | null) => void;
   onBack: () => void;
 }) {
-  const [procedure, setProcedure] = useState("extraction");
-  const [tooth, setTooth] = useState(30);
+  const [procedure, setProcedure] = useState(initialProcedure ?? "extraction");
+  const [tooth, setTooth] = useState(initialTooth ?? 30);
   const needsTooth = TOOTH_REQUIRED.has(procedure);
   const label = PROCEDURES.find((p) => p.value === procedure)?.label;
 
@@ -122,9 +126,15 @@ export default function ProcedureForm({
       >
         ← {patientLabel}
       </button>
-      <h2 className="mb-4 font-[family-name:var(--font-display)] text-2xl font-semibold uppercase tracking-tight text-stone-900">
+      <h2 className="mb-2 font-[family-name:var(--font-display)] text-2xl font-semibold uppercase tracking-tight text-stone-900">
         What are you about to do?
       </h2>
+      {initialProcedure && (
+        <p className="mb-4 text-xs text-teal-800">
+          Pre-filled with this demo case&apos;s scenario — change anything to
+          explore.
+        </p>
+      )}
 
       {/* how it works — one-glance explainer */}
       <ol className="mb-6 grid grid-cols-3 gap-2">

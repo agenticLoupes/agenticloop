@@ -1,17 +1,26 @@
 "use client";
 
-import type { InvestigationState } from "@/lib/api";
+import { useState } from "react";
+import type { InvestigationState, TraceEvent } from "@/lib/api";
 
 export default function ResultCards({
   result,
+  trace,
   onViewSource,
   onRestart,
 }: {
   result: InvestigationState;
+  trace: TraceEvent[] | null;
   onViewSource: (evidenceId: string) => void;
   onRestart: () => void;
 }) {
   const cards = result.final_cards ?? [];
+  const [showTrace, setShowTrace] = useState(false);
+  const sourcesChecked =
+    trace?.filter((e) => e.agent === "guardian" && e.event_type === "tool_call").length ?? 0;
+  const intent =
+    `${result.procedure?.replace("_", " ")}` +
+    (result.tooth_number != null ? ` — tooth #${result.tooth_number}` : "");
   return (
     <section>
       <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold uppercase tracking-tight text-stone-900">
@@ -27,12 +36,41 @@ export default function ResultCards({
             Review complete
           </p>
           <p className="mt-1 text-sm text-stone-600">
-            No additional record was surfaced.
+            Guardian investigated {sourcesChecked} record source
+            {sourcesChecked === 1 ? "" : "s"} for <em>{intent}</em> and found
+            nothing that deserves your attention.
             {result.dismissed_count > 0 &&
               ` ${result.dismissed_count} candidate record${
                 result.dismissed_count === 1 ? "" : "s"
               } dismissed after challenge.`}
           </p>
+          <p className="mt-2 text-xs text-stone-500">
+            Silence is a result: no interruption when the record holds nothing
+            relevant.
+          </p>
+        </div>
+      )}
+
+      {trace && trace.length > 0 && (
+        <div className="mt-4">
+          <button
+            onClick={() => setShowTrace((s) => !s)}
+            className="text-xs font-medium uppercase tracking-[0.15em] text-teal-800 underline-offset-2 hover:underline"
+          >
+            {showTrace ? "Hide investigation" : "View investigation"}
+          </button>
+          {showTrace && (
+            <div className="mt-2 space-y-1.5 rounded-lg bg-stone-900 p-3 font-mono text-[12px] leading-relaxed text-stone-300">
+              {trace.map((ev) => (
+                <p key={ev.sequence_no}>
+                  <span className="mr-1.5 text-[9px] uppercase tracking-[0.15em] text-teal-500">
+                    {ev.agent === "context_interpreter" ? "context" : ev.agent}
+                  </span>
+                  {ev.summary}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
