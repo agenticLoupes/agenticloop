@@ -115,7 +115,7 @@ export default function LivePage() {
       <header className="flex items-end justify-between">
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-lg font-bold uppercase tracking-tight text-stone-900">
-            DentAssist <span className="text-teal-800">Live</span>
+            LOUPEIN <span className="text-teal-800">Live</span>
           </h1>
           <p className="text-[11px] italic text-stone-500">Hands-free. Results appear on the laptop.</p>
         </div>

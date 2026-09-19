@@ -14,7 +14,7 @@ from app.db import get_conn
 from app.provider import get_llm
 from app.tools import conversations, imaging, records
 
-ASK_SYSTEM = """You are a case-briefing assistant for a dentist using DentAssist Guardian.
+ASK_SYSTEM = """You are a case-briefing assistant for a dentist using LOUPEIN.
 You help them understand THIS patient's synthetic record and the completed pre-procedure
 review so they can analyse the case themselves.
 

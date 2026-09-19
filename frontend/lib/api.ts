@@ -48,9 +48,21 @@ export interface EvidenceRecord {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, init);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json() as Promise<T>;
+  // timeout + one retry: a transient network/pool blip self-heals instead of
+  // leaving the UI on an endless "Loading…" (fail-safe per PLAN §22)
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(`${API_URL}${path}`, {
+        ...init,
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return (await res.json()) as T;
+    } catch (e) {
+      if (attempt >= 1) throw e;
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  }
 }
 
 export const getPatients = () => request<Patient[]>("/demo/patients");

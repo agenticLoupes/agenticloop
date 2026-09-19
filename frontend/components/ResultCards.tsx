@@ -4,6 +4,13 @@ import { useState } from "react";
 import { API_URL, type InvestigationState, type TraceEvent } from "@/lib/api";
 import CaseChat from "@/components/CaseChat";
 
+const AGENT_LABELS: Record<string, string> = {
+  context_interpreter: "Understanding the plan",
+  guardian: "Reading the record",
+  skeptic: "Double-checking findings",
+  composer: "Writing it up",
+};
+
 export default function ResultCards({
   result,
   trace,
@@ -21,68 +28,49 @@ export default function ResultCards({
     trace?.filter((e) => e.agent === "guardian" && e.event_type === "tool_call").length ?? 0;
   const intent =
     `${result.procedure?.replace("_", " ")}` +
-    (result.tooth_number != null ? ` — tooth #${result.tooth_number}` : "");
+    (result.tooth_number != null ? `, tooth #${result.tooth_number}` : "");
   return (
     <section>
-      <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold uppercase tracking-tight text-stone-900">
+      <p className="text-sm text-stone-600">
+        <span className="font-medium text-stone-800">{result.patient_id}</span> ·{" "}
+        {intent}
+      </p>
+      <h2 className="mt-1 text-3xl font-semibold text-stone-900">
         Before you begin
       </h2>
       {cards.length > 0 ? (
-        <p className="mt-1 text-xs font-medium uppercase tracking-[0.2em] text-amber-700">
-          {cards.length} record{cards.length === 1 ? "" : "s"} to review
+        <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">
+          {cards.length} record{cards.length === 1 ? "" : "s"} worth your attention
         </p>
       ) : (
-        <div className="mt-4 rounded-lg border border-teal-200 bg-teal-50/60 p-4">
-          <p className="text-xs font-medium uppercase tracking-[0.2em] text-teal-800">
-            Review complete
+        <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4">
+          <p className="text-base font-semibold text-teal-900">
+            Nothing to flag
           </p>
-          <p className="mt-1 text-sm text-stone-600">
-            Guardian investigated {sourcesChecked} record source
-            {sourcesChecked === 1 ? "" : "s"} for <em>{intent}</em> and found
-            nothing that deserves your attention.
+          <p className="mt-1.5 text-sm leading-relaxed text-stone-700">
+            Guardian checked {sourcesChecked} source
+            {sourcesChecked === 1 ? "" : "s"} for {intent} and found nothing that
+            deserves your attention.
             {result.dismissed_count > 0 &&
-              ` ${result.dismissed_count} candidate record${
-                result.dismissed_count === 1 ? "" : "s"
-              } dismissed after challenge.`}
+              ` ${result.dismissed_count} possible finding${
+                result.dismissed_count === 1 ? " was" : "s were"
+              } ruled out after a second look.`}
           </p>
-          <p className="mt-2 text-xs text-stone-500">
-            Silence is a result: no interruption when the record holds nothing
-            relevant.
+          <p className="mt-2 text-sm text-stone-600">
+            Silence is a result — you only get interrupted when the record says
+            something.
           </p>
         </div>
       )}
 
       {result.summary && (
-        <div className="mt-4 rounded-lg border border-stone-200 bg-white p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
-            Investigation summary
+        <div className="mt-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+          <p className="text-sm font-semibold text-stone-900">
+            What Guardian found
           </p>
-          <p className="mt-1.5 text-sm leading-relaxed text-stone-700">
+          <p className="mt-1.5 text-[15px] leading-relaxed text-stone-700">
             {result.summary}
           </p>
-        </div>
-      )}
-
-      {trace && trace.length > 0 && (
-        <div className="mt-4">
-          <button
-            onClick={() => setShowTrace((s) => !s)}
-            className="text-xs font-medium uppercase tracking-[0.15em] text-teal-800 underline-offset-2 hover:underline"
-          >
-            {showTrace ? "Hide investigation" : "View investigation"}
-          </button>
-          {showTrace && (
-            <div className="mt-2 space-y-1.5 rounded-lg bg-stone-900 p-3 font-mono text-[12px] leading-relaxed text-stone-300">
-              {trace.map((ev) => (
-                <p key={ev.sequence_no}>
-                  <span className="mr-1.5 text-[9px] uppercase tracking-[0.15em] text-teal-500">
-                    {ev.agent === "context_interpreter" ? "context" : ev.agent}
-                  </span>
-                  {ev.summary}
-                </p>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
@@ -90,43 +78,46 @@ export default function ResultCards({
         {cards.map((card, i) => (
           <article
             key={i}
-            className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm"
+            className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm"
           >
             <span
-              className={`inline-block rounded-sm px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] ${
+              className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
                 card.decision === "VERIFY"
-                  ? "bg-blue-100 text-blue-800"
-                  : "bg-amber-100 text-amber-800"
+                  ? "bg-sky-100 text-sky-900"
+                  : "bg-amber-100 text-amber-900"
               }`}
             >
-              {card.decision === "VERIFY" ? "Item to verify" : "Record to review"}
+              {card.decision === "VERIFY" ? "Worth verifying" : "Please review"}
             </span>
-            <h3 className="mt-2.5 font-[family-name:var(--font-display)] text-lg font-medium text-stone-900">
-              {card.title}
+            <h3 className="mt-3 text-lg font-semibold leading-snug text-stone-900">
+              {/* the badge above already says "review"/"verify" — drop the repeated prefix */}
+              {card.title.replace(/^(Record to review|Item to verify)\s*[—-]\s*/i, "")}
             </h3>
             {card.image_url && (
-              <figure className="mt-2.5">
+              <figure className="mt-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`${API_URL}${card.image_url}`}
                   alt={card.image_caption ?? "Synthetic radiograph"}
-                  className="w-full rounded-md border border-stone-200 bg-stone-900"
+                  className="w-full rounded-lg border border-stone-200 bg-stone-900"
                 />
                 {card.image_caption && (
-                  <figcaption className="mt-1.5 text-xs italic leading-snug text-stone-500">
+                  <figcaption className="mt-2 text-sm leading-snug text-stone-600">
                     {card.image_caption}
                   </figcaption>
                 )}
               </figure>
             )}
-            <p className="mt-1 text-sm leading-relaxed text-stone-600">
+            <p className="mt-2 text-[15px] leading-relaxed text-stone-700">
               {card.summary}
             </p>
-            <div className="mt-3 border-t border-stone-100 pt-3">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-400">
-                Why shown?
+            <div className="mt-4 rounded-lg bg-stone-50 px-3 py-2.5">
+              <p className="text-sm font-semibold text-stone-700">
+                Why you&apos;re seeing this
               </p>
-              <p className="mt-1 text-xs text-stone-500">{card.reason_shown}</p>
+              <p className="mt-1 text-sm leading-relaxed text-stone-600">
+                {card.reason_shown}
+              </p>
             </div>
             {card.evidence_ids.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
@@ -134,9 +125,12 @@ export default function ResultCards({
                   <button
                     key={id}
                     onClick={() => onViewSource(id)}
-                    className="rounded-md border border-stone-300 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-stone-700 transition-colors hover:border-teal-600 hover:text-teal-800"
+                    className="min-h-11 rounded-lg border border-stone-300 px-3.5 text-sm font-medium text-stone-700 transition-colors hover:border-teal-600 hover:bg-teal-50 hover:text-teal-800"
                   >
-                    View source · {id}
+                    See the source record
+                    <span className="ml-1.5 font-mono text-xs text-stone-500">
+                      {id}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -145,13 +139,46 @@ export default function ResultCards({
         ))}
       </div>
 
+      {trace && trace.length > 0 && (
+        <div className="mt-5">
+          <button
+            onClick={() => setShowTrace((s) => !s)}
+            aria-expanded={showTrace}
+            className="min-h-11 text-sm font-semibold text-teal-800 underline underline-offset-2 hover:text-teal-700"
+          >
+            {showTrace
+              ? "Hide the steps Guardian took"
+              : `Show the ${trace.length} steps Guardian took`}
+          </button>
+          {showTrace && (
+            <ol className="mt-2 space-y-2 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+              {trace.map((ev) => (
+                <li key={ev.sequence_no} className="flex items-start gap-2.5">
+                  <span aria-hidden className="mt-1 text-xs text-teal-700">
+                    ✓
+                  </span>
+                  <span>
+                    <span className="block text-xs font-medium text-stone-500">
+                      {AGENT_LABELS[ev.agent] ?? ev.agent}
+                    </span>
+                    <span className="block text-sm leading-snug text-stone-700">
+                      {ev.summary}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+
       {result.run_id && <CaseChat key={result.run_id} runId={result.run_id} />}
 
       <button
         onClick={onRestart}
-        className="mt-8 w-full rounded-md border border-stone-300 bg-white py-3 text-xs font-semibold uppercase tracking-[0.15em] text-stone-700 transition-colors hover:border-teal-700 hover:text-teal-800"
+        className="mt-8 min-h-14 w-full rounded-xl border border-stone-300 bg-white text-base font-semibold text-stone-800 transition-colors hover:border-teal-700 hover:bg-teal-50 hover:text-teal-800"
       >
-        Run another check
+        Check another patient
       </button>
     </section>
   );
