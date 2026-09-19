@@ -41,6 +41,47 @@ class Card(BaseModel):
     image_caption: Optional[str] = None  # authored description of the image (safe language)
 
 
+class Citation(BaseModel):
+    """An external source the dentist can open (PubMed record or guideline page)."""
+    citation_id: str  # "PMID:12345678" or a URL
+    label: str = ""
+    url: Optional[str] = None
+
+
+class PatientContextItem(BaseModel):
+    """A retrieved patient fact, carrying the record ids it came from (§12)."""
+    finding: str
+    evidence_ids: list[str] = []
+
+
+class Approach(BaseModel):
+    """A documented approach, never an instruction. NO CITATION -> NOT AN APPROACH."""
+    approach: str
+    rationale: str = ""
+    patient_specific_considerations: list[str] = []
+    citations: list[str] = []
+
+
+class AdvisorAnswer(BaseModel):
+    """The Advisor's reply to a dentist-asked question (§9.4 language rules apply)."""
+    question: str
+    patient_id: Optional[str] = None
+    procedure: Optional[str] = None
+    tooth_number: Optional[int] = None
+    question_focus: str = ""
+    patient_context: list[PatientContextItem] = []
+    approaches: list[Approach] = []
+    cautions: list[str] = []
+    patient_communication: str = ""
+    urgent_referral: bool = False
+    citations: list[Citation] = []
+    unavailable_sources: list[str] = []
+    notes: str = ""  # free text when the model could not fill the structure (never invented)
+    trace: list[dict] = []  # observable tool activity for this answer (§20)
+    status: str = "complete"  # complete | error
+    error: Optional[str] = None
+
+
 class InvestigationState(BaseModel):
     """Explicit application state (§13) — never hidden conversation history."""
     run_id: str
