@@ -87,3 +87,10 @@ insert into dental_event (id, patient_id, tooth_number, event_type, event_date, 
 insert into clinical_note (id, patient_id, note_date, summary) values
 ('NOTE-011','DEMO-011','2026-01-10','Blood pressure well controlled on current medication.'),
 ('NOTE-016','DEMO-016','2026-02-20','On anticoagulant; routine monitoring.');
+
+-- authored image descriptions (safe language; rendered on cards and evidence view)
+update imaging_study set metadata = jsonb_build_object('description', 'Synthetic panoramic-style radiograph of the lower right region. The tooth #30 area is marked for pre-procedure review; the dentist reads the image itself.') where id='IMG-001';
+update imaging_study set metadata = jsonb_build_object('description', 'Synthetic panoramic-style radiograph of the upper right region, tooth #3 area. On file from a prior visit; not related to the lower right procedure site.') where id='IMG-002';
+update imaging_study set metadata = jsonb_build_object('description', 'Synthetic radiograph of the lower left region, tooth #19 area, captured at reduced detail. Limited detail is one reason a record may need verification rather than automatic surfacing.') where id='IMG-003';
+update imaging_study set metadata = jsonb_build_object('description', 'Synthetic radiograph of the upper front region, tooth #8 area — the planned implant site. Recent imaging of a procedure site is typically worth the dentist''s review.') where id='IMG-004';
+update imaging_study set metadata = jsonb_build_object('description', 'Synthetic radiograph of the lower right region, tooth #30 area, on file from a routine exam.') where id='IMG-005';

@@ -1,5 +1,5 @@
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Same-origin by default: next.config.ts proxies /api/* to FastAPI (works through a tunnel).
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 export interface Patient {
   id: string;
@@ -14,6 +14,7 @@ export interface ResultCard {
   reason_shown: string;
   evidence_ids: string[];
   image_url?: string | null;
+  image_caption?: string | null;
 }
 
 export interface InvestigationState {
@@ -47,9 +48,21 @@ export interface EvidenceRecord {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, init);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json() as Promise<T>;
+  // timeout + one retry: a transient network/pool blip self-heals instead of
+  // leaving the UI on an endless "Loading…" (fail-safe per PLAN §22)
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(`${API_URL}${path}`, {
+        ...init,
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return (await res.json()) as T;
+    } catch (e) {
+      if (attempt >= 1) throw e;
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  }
 }
 
 export const getPatients = () => request<Patient[]>("/demo/patients");
@@ -98,6 +111,24 @@ export const getEvidence = (evidenceId: string) => {
   return request<EvidenceRecord>(`/evidence/${type}/${evidenceId}`);
 };
 
+export interface ChatTurn {
+  role: "dentist" | "assistant";
+  content: string;
+}
+
+export const askAboutCase = (
+  runId: string,
+  question: string,
+  history: ChatTurn[] = [],
+  init?: RequestInit
+) =>
+  request<{ answer: string }>(`/investigations/${runId}/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, history }),
+    ...init,
+  });
+
 export const resetDemo = () =>
   request<unknown>("/demo/reset", { method: "POST" });
 
@@ -114,3 +145,44 @@ export const uploadImaging = async (
   if (!res.ok) throw new Error(`${res.status}`);
   return res.json();
 };
+
+// ---- live voice (phone /live route) ----------------------------------------
+
+// One-use ephemeral token; the real GOOGLE_API_KEY never leaves the backend.
+export interface LiveToken {
+  token: string;
+  model: string;
+  api_version: string;
+}
+
+export const getLiveToken = () =>
+  request<LiveToken>("/live/token", { method: "POST" });
+
+// Newest run from any device — lets the laptop follow runs started by voice on the phone.
+export interface LatestRun {
+  id: string;
+  patient_id: string;
+  procedure: string;
+  tooth_number: number | null;
+  status: "running" | "complete" | "error";
+  started_at: string;
+}
+
+export const getLatestRun = () => request<LatestRun | null>("/live/latest-run");
+
+export interface TranscriptLine {
+  id: number;
+  role: "dentist" | "assistant" | "system";
+  text: string;
+  at: string;
+}
+
+export const getTranscript = (since: number) =>
+  request<TranscriptLine[]>(`/live/transcript?since=${since}`);
+
+export const postTranscript = (role: TranscriptLine["role"], text: string) =>
+  request<{ id: number | null }>("/live/transcript", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role, text }),
+  });

@@ -19,12 +19,6 @@ const TOOTH_REQUIRED = new Set([
   "implant",
 ]);
 
-const STEPS = [
-  ["1", "State the intent", "procedure + tooth"],
-  ["2", "Guardian investigates", "meds · allergies · notes · imaging"],
-  ["3", "Review the evidence", "only source-backed records"],
-] as const;
-
 // Universal Numbering: upper arch left→right = #1..#16, lower arch left→right = #32..#17
 function archPositions(cy: number, flip: boolean) {
   return Array.from({ length: 16 }, (_, i) => {
@@ -53,13 +47,13 @@ function ToothChart({
       viewBox="0 0 320 226"
       className="w-full select-none"
       role="group"
-      aria-label="Tooth chart — tap a tooth"
+      aria-label="Tooth chart — choose a tooth"
     >
-      <text x="160" y="108" textAnchor="middle" className="fill-stone-300" fontSize="9" letterSpacing="2">
-        UPPER
+      <text x="160" y="106" textAnchor="middle" className="fill-stone-400" fontSize="10">
+        Upper
       </text>
-      <text x="160" y="124" textAnchor="middle" className="fill-stone-300" fontSize="9" letterSpacing="2">
-        LOWER
+      <text x="160" y="124" textAnchor="middle" className="fill-stone-400" fontSize="10">
+        Lower
       </text>
       {teeth.map(({ x, y, n }) => {
         const active = n === selected;
@@ -67,8 +61,16 @@ function ToothChart({
           <g
             key={n}
             onClick={() => onSelect(n)}
-            className="cursor-pointer"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect(n);
+              }
+            }}
+            tabIndex={0}
+            className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
             role="button"
+            aria-pressed={active}
             aria-label={`Tooth ${n}`}
           >
             {/* generous invisible hit area for touch */}
@@ -76,7 +78,7 @@ function ToothChart({
             <circle
               cx={x}
               cy={y}
-              r={9.5}
+              r={10}
               className={
                 active
                   ? "fill-teal-700 stroke-teal-800"
@@ -86,10 +88,10 @@ function ToothChart({
             />
             <text
               x={x}
-              y={y + 2.8}
+              y={y + 3}
               textAnchor="middle"
-              fontSize="7.5"
-              className={active ? "fill-white font-bold" : "fill-stone-500"}
+              fontSize="8.5"
+              className={active ? "fill-white font-bold" : "fill-stone-600"}
             >
               {n}
             </text>
@@ -123,45 +125,31 @@ export default function ProcedureForm({
     <section>
       <button
         onClick={onBack}
-        className="mb-4 text-xs uppercase tracking-wider text-stone-500 hover:text-stone-800"
+        className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-stone-600 hover:text-teal-800"
       >
-        ← {patientLabel}
+        <span aria-hidden>←</span> {patientLabel}
       </button>
-      <h2 className="mb-2 font-[family-name:var(--font-display)] text-2xl font-semibold uppercase tracking-tight text-stone-900">
+      <h2 className="text-2xl font-semibold text-stone-900">
         What are you about to do?
       </h2>
-      {initialProcedure && (
-        <p className="mb-4 text-xs text-teal-800">
-          Pre-filled with this demo case&apos;s scenario — change anything to
-          explore.
-        </p>
-      )}
-
-      {/* how it works — one-glance explainer */}
-      <ol className="mb-6 grid grid-cols-3 gap-2">
-        {STEPS.map(([n, title, sub]) => (
-          <li key={n} className="rounded-md border border-stone-200 bg-white px-2.5 py-2">
-            <span className="block font-mono text-[10px] text-teal-700">{n}</span>
-            <span className="block text-[11px] font-semibold leading-tight text-stone-800">
-              {title}
-            </span>
-            <span className="block text-[10px] leading-tight text-stone-400">{sub}</span>
-          </li>
-        ))}
-      </ol>
+      <p className="mt-1.5 text-sm text-stone-600">
+        {initialProcedure
+          ? "We've pre-filled this demo case — change anything you like."
+          : "Tell Guardian the plan so it knows what to look for."}
+      </p>
 
       <form
         onSubmit={(e) => {
           e.preventDefault();
           onSubmit(procedure, needsTooth ? tooth : null, upload);
         }}
-        className="space-y-5"
+        className="mt-6 space-y-6"
       >
-        <div>
-          <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
+        <fieldset>
+          <legend className="mb-2 text-base font-semibold text-stone-900">
             Procedure
-          </span>
-          <div className="grid grid-cols-3 gap-2">
+          </legend>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {PROCEDURES.map((p) => {
               const active = p.value === procedure;
               return (
@@ -171,10 +159,10 @@ export default function ProcedureForm({
                   onClick={() => setProcedure(p.value)}
                   aria-pressed={active}
                   className={
-                    "rounded-md border px-2 py-2.5 text-xs font-medium transition-colors " +
+                    "min-h-11 rounded-lg border px-3 text-sm font-medium transition-colors " +
                     (active
                       ? "border-teal-700 bg-teal-700 text-white"
-                      : "border-stone-300 bg-white text-stone-700 hover:border-teal-600")
+                      : "border-stone-300 bg-white text-stone-700 hover:border-teal-600 hover:bg-teal-50")
                   }
                 >
                   {p.label}
@@ -182,26 +170,35 @@ export default function ProcedureForm({
               );
             })}
           </div>
-        </div>
+        </fieldset>
 
         {needsTooth && (
           <div>
-            <span className="mb-1 block text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
-              Tooth — tap the chart
-            </span>
-            <div className="rounded-lg border border-stone-200 bg-white px-2 py-3">
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
+              <span className="text-base font-semibold text-stone-900">Which tooth?</span>
+              <span className="text-sm text-stone-600">
+                Selected: <strong className="text-teal-800">#{tooth}</strong>
+              </span>
+            </div>
+            <div className="rounded-xl border border-stone-200 bg-white px-2 py-3 shadow-sm">
               <ToothChart selected={tooth} onSelect={setTooth} />
             </div>
+            <p className="mt-1.5 text-sm text-stone-500">
+              Tap a tooth on the chart (standard #1–#32 numbering).
+            </p>
           </div>
         )}
 
         <div>
-          <span className="mb-1 block text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
-            Attach radiograph — optional
+          <span className="mb-2 block text-base font-semibold text-stone-900">
+            Radiograph{" "}
+            <span className="font-normal text-stone-500">(optional)</span>
           </span>
-          <label className="flex cursor-pointer items-center justify-between rounded-md border border-dashed border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-600 hover:border-teal-600">
-            <span>{upload ? upload.name : "Upload a sample image (PNG/JPEG)"}</span>
-            <span className="text-xs font-semibold uppercase tracking-wider text-teal-800">
+          <label className="flex min-h-14 cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-stone-300 bg-white px-4 py-3 text-sm text-stone-700 hover:border-teal-600 hover:bg-teal-50">
+            <span className="min-w-0 truncate">
+              {upload ? upload.name : "Attach a sample image (PNG or JPEG)"}
+            </span>
+            <span className="shrink-0 text-sm font-semibold text-teal-800">
               {upload ? "Change" : "Browse"}
             </span>
             <input
@@ -211,31 +208,35 @@ export default function ProcedureForm({
               onChange={(e) => setUpload(e.target.files?.[0] ?? null)}
             />
           </label>
-          <p className="mt-1 text-[10px] leading-snug text-stone-400">
-            Sample/synthetic images only — never real patient data. Uploads have no
-            verified source, so they always require your review (never auto-surfaced).
+          <p className="mt-1.5 text-sm leading-snug text-stone-500">
+            Sample images only — never real patient data. Anything you upload has
+            no verified source, so Guardian always asks you to review it.
           </p>
         </div>
 
         {/* selection summary — the intent in one sentence */}
-        <p className="rounded-md bg-stone-100 px-3 py-2.5 text-center text-sm text-stone-700">
-          {label}
+        <p className="rounded-xl bg-stone-100 px-4 py-3 text-center text-[15px] text-stone-800">
+          Checking <strong>{patientLabel}</strong> before{" "}
+          <strong>{label?.toLowerCase()}</strong>
           {needsTooth && (
             <>
-              {" — tooth "}
-              <span className="font-semibold text-teal-800">#{tooth}</span>
+              {" on tooth "}
+              <strong className="text-teal-800">#{tooth}</strong>
             </>
           )}
-          {" · "}
-          {patientLabel}
         </p>
 
-        <button
-          type="submit"
-          className="w-full rounded-md bg-teal-800 py-3.5 font-[family-name:var(--font-display)] text-sm font-semibold uppercase tracking-[0.15em] text-white transition-colors hover:bg-teal-700"
-        >
-          Challenge procedure
-        </button>
+        <div>
+          <button
+            type="submit"
+            className="min-h-14 w-full rounded-xl bg-teal-800 px-5 text-base font-semibold text-white transition-colors hover:bg-teal-700"
+          >
+            Check the record
+          </button>
+          <p className="mt-2 text-center text-sm text-stone-500">
+            Usually takes about 30 seconds.
+          </p>
+        </div>
       </form>
     </section>
   );
