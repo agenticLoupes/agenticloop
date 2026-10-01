@@ -38,6 +38,7 @@ class Card(BaseModel):
     reason_shown: str
     evidence_ids: list[str]
     image_url: Optional[str] = None  # set when the evidence is an imaging record (inline render)
+    image_caption: Optional[str] = None  # authored description of the image (safe language)
 
 
 class InvestigationState(BaseModel):

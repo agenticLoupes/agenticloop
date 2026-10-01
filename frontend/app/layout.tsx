@@ -15,7 +15,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DentAssist Guardian",
+  title: "LOUPEIN",
   description:
     "Before you begin, let the record challenge the plan. Synthetic-data prototype.",
 };

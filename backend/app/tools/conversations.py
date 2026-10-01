@@ -4,6 +4,16 @@ from app.tools.records import _to_record
 from app.models import Record
 
 
+def list_conversations(patient_id: str) -> list[Record]:
+    with get_conn() as c:
+        rows = c.execute(
+            "select * from conversation_transcript where patient_id = %s"
+            " order by transcript_date desc nulls last",
+            (patient_id,),
+        ).fetchall()
+    return [_to_record(r, "conversation") for r in rows]
+
+
 def search_conversations(patient_id: str, query: str, from_date=None, to_date=None) -> list[Record]:
     # ponytail: naive ILIKE over text+summary; swap for FTS if recall matters
     sql = "select * from conversation_transcript where patient_id = %s and (transcript_text ilike %s or summary ilike %s)"

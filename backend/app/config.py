@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     supabase_db_url: str = ""
     google_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
+    gemini_live_model: str = "gemini-3.8-live"  # phone voice session; must be a Live API model
     typesafe_api_key: str = ""
 
 

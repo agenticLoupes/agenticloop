@@ -53,10 +53,26 @@ def draw(path: Path, label: str, low_detail: bool = False):
     img.save(path)
 
 
+def thumb(path: Path, low_detail: bool = False):
+    """Bright, readable 96px square tile: a close-up tooth row (for list thumbnails)."""
+    s = 96
+    img = Image.new("L", (s, s), 24)
+    d = ImageDraw.Draw(img)
+    shade = 120 if low_detail else 205
+    for i in range(4):  # four tooth crowns with roots
+        x = 10 + i * 20
+        d.rounded_rectangle([x, 26, x + 16, 52], radius=5, fill=shade, outline=235)
+        d.polygon([(x + 3, 52), (x + 8, 74), (x + 13, 52)], fill=shade - 30)
+    d.line([(4, 56), (s - 4, 56)], fill=70, width=2)  # gum line
+    path.parent.mkdir(parents=True, exist_ok=True)
+    img.save(path)
+
+
 def main():
     for iid, label in IMAGES.items():
         draw(OUT / f"{iid}.png", label, low_detail=(iid == "IMG-003"))
-        print(f"wrote {OUT / (iid + '.png')}")
+        thumb(OUT / f"{iid}_thumb.png", low_detail=(iid == "IMG-003"))
+        print(f"wrote {OUT / (iid + '.png')} (+thumb)")
 
 
 if __name__ == "__main__":
